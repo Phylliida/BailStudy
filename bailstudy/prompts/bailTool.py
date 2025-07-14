@@ -1,7 +1,28 @@
+from vllm.entrypoints.openai.tool_parsers.abstract_tool_parser import (ToolParser, ToolParserManager)
+from transformers import AutoTokenizer
+TOOL_NAME = "switchconversation_tool"
+
+def getToolParser(modelStr):
+    tokenizer = AutoTokenizer.from_pretrained(modelStr)
+    # Qwen 3 uses hermes parser
+    # see https://github.com/vllm-project/vllm/blob/main/vllm/entrypoints/openai/tool_parsers/hermes_tool_parser.py#L64
+    #tool_parser = ToolParserManager.get_tool_parser("hermes")(llm.get_tokenizer()) # Qwen 2.5 and Qwen 3 uses hermes parser, see docs
+    if modelStr == "Qwen/Qwen2.5-7B-Instruct": return ToolParserManager.get_tool_parser("hermes")(tokenizer)
+    # https://github.com/vllm-project/vllm/issues/16771
+    if modelStr == "THUDM/GLM-4-32B-0414": return ToolParserManager.get_tool_parser("pythonic")(tokenizer)
+    else: raise ValueError(modelStr)
+
+def calledBailTool(outputText, toolParser):
+    try:
+        tool_calls = toolParser.extract_tool_calls(model_output=outputText, request=None) # it doesn't use request so we can just set it to None
+        return tool_calls.tools_called and len(tool_calls.tool_calls) > 0 and any([tool.function.name.lower().strip() == TOOL_NAME for tool in tool_calls.tool_calls])
+    except: # failed to parse json, bail
+        return False
+
 def getOwnModelName(modelStr):
     if "qwen" in modelStr.lower(): return "Qwen"
     if "claude" in modelStr.lower(): return "Claude"
-    if "glm-" in modelStr.lower(): return "GLM"
+    if "glm-" in modelStr.lower(): return "ChatGLM"
     if "gemma" in modelStr.lower(): return "Gemma"
     else: raise ValueError(modelStr)
 
@@ -12,7 +33,7 @@ def getBailTool(modelStr, inferenceType="local"):
         return {
             "type": "function",
             "function": {
-                "name": "switchconversation_tool",
+                "name": TOOL_NAME,
                 "description": toolDescription,
                 "parameters": {},
                 "required": []
@@ -23,5 +44,5 @@ def getBailTool(modelStr, inferenceType="local"):
         def bailToolFunc(a, s): # This gets appended to output and then claude responds
             return BAIL_TOOL_CALLED_STR
         from langchain.tools import StructuredTool
-        tool = StructuredTool.from_function(func=bailToolFunc, name="switchconversation_tool", description=toolDescription)
+        tool = StructuredTool.from_function(func=bailToolFunc, name=TOOL_NAME, description=toolDescription)
         return tool

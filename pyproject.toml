@@ -26,6 +26,7 @@ dependencies = [
     "pytz",
     "huggingface-hub",
     "langchain",
+    "transformers",
 ]
 dynamic = ["version"]
 

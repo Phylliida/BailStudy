@@ -4,7 +4,7 @@ import copy
 from .utils import getCachedFileJson, runBatched
 from .data.shareGPT import loadShareGPT
 from .data.wildchat import loadWildchat
-from .prompts.bailTool import getBailTool
+from .prompts.bailTool import getBailTool, getToolParser, calledBailTool
 
 def getTurnPrompts(tokenizer, conversation, maxInputTokens: int = 20000, tools=None):
     turnPrompts = []
@@ -15,7 +15,7 @@ def getTurnPrompts(tokenizer, conversation, maxInputTokens: int = 20000, tools=N
             messages = conversationSoFar
             inputs = tokenizer.apply_chat_template(messages, tokenize=True, return_dict=True, return_tensors="pt", continue_final_message=False, tools=tools)
             if len(inputs['input_ids'][0]) <= maxInputTokens: # trim to only max input tokens (we could start trimming front of context, but, meh this is underestimate which is ok)
-                prompt = inputs['input_ids'][0]
+                prompt = inputs['input_ids'][0].tolist() # vllm expects a simple list, not a tensor
                 turnPrompts.append((turnI, prompt))
     return turnPrompts
 
@@ -58,8 +58,10 @@ def getRollouts(llm, conversations: List[List[Dict[str, str]]], maxGenerationTok
 
 
 def runBailOnRealData():
+    # Qwen 3 uses hermes parser
+    # see https://github.com/vllm-project/vllm/blob/main/vllm/entrypoints/openai/tool_parsers/hermes_tool_parser.py#L64
+     # Qwen 3 uses hermes parser, see docs
     models = [
-        "google/gemma-2-2b-it",
         "Qwen/Qwen2.5-7B-Instruct",
         "THUDM/GLM-4-32B-0414",
     ]
@@ -78,22 +80,38 @@ def runBailOnRealData():
 
     for modelStr in models:
         tools = [getBailTool(modelStr)]
+        toolParser = getToolParser(modelStr)
         for dataName, dataFunc in dataFuncs:
             def generateModelRolloutsFunc():
                 print("Running rollout on model " + modelStr + " on data " + dataName)
                 llm = vllm.LLM(modelStr)
                 data = dataFunc()
                 return getRollouts(llm=llm,
-                                   conversations=data[:10000],
+                                   conversations=data[:500],
                                    maxGenerationTokens=maxGenerationTokens,
                                    maxInputTokens=maxInputTokens,
                                    llmInferenceArgs=llmInferenceArgs,
                                    tools=tools,
                                    seed=seed,
                                    batchSize=batchSize)
-            cachedOutputPath = "bailOnRealDataRollouts/" + modelStr.replace("/", "_") + dataName + ".json"
-            modelOutputs, changed = getCachedFileJson(cachedOutputPath, generateModelRolloutsFunc, returnIfChanged=True)
+            modelDataStr = modelStr.replace("/", "_") + dataName
+            cachedRolloutPath = "bailOnRealData/rollouts/" + modelDataStr + ".json"
+            modelOutputs, changed = getCachedFileJson(cachedRolloutPath, generateModelRolloutsFunc, returnIfChanged=True)
             if changed: return # restart script whenever change params so don't run out of memory
+            def getDataPointsWhereToolsCalledFunc():
+                bailedI = []
+                for i, turnOutputs in enumerate(modelOutputs):
+                    for output in turnOutputs:
+                        if calledBailTool(output, toolParser):
+                            bailedI.append(i)
+                            break # we have a bail for this one, go to next one
+                return bailedI
+
+            cachedToolsCalledPath = "bailOnRealData/whereToolsCalled/" + modelDataStr + ".json"
+            modelOutputs, changed = getCachedFileJson(cachedToolsCalledPath, getDataPointsWhereToolsCalledFunc, returnIfChanged=True)
+
+                
+
 
 
 if __name__ == "__main__":
