@@ -1,9 +1,9 @@
 def getOwnModelName(modelStr):
-    if "qwen" in model.lower(): return "Qwen"
-    if "claude" in model.lower(): return "Claude"
-    if "glm-" in model.lower(): return "GLM"
-    if "gemma" in model.lower(): return "Gemma"
-    else: raise ValueError(model)
+    if "qwen" in modelStr.lower(): return "Qwen"
+    if "claude" in modelStr.lower(): return "Claude"
+    if "glm-" in modelStr.lower(): return "GLM"
+    if "gemma" in modelStr.lower(): return "Gemma"
+    else: raise ValueError(modelStr)
 
 def getBailTool(modelStr, inferenceType="local"):
     modelName = getOwnModelName(modelStr)

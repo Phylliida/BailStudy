@@ -3,6 +3,11 @@ import pytz
 from typing import Tuple, List, Dict, Callable, Any
 import itertools
 from collections import deque
+import pathlib
+import os
+import ujson
+import traceback
+from huggingface_hub import hf_hub_download
 
 ## Stuff for keypoller support on windows
 isWindows = False
@@ -15,9 +20,13 @@ except ImportError as e:
     import select
     import termios
 
-
-
-
+def getHfFile(repoId, fileName):
+    return hf_hub_download(
+        repo_id   = repoId,
+        filename  = fileName,
+        repo_type = "dataset",
+        cache_dir = str(getCachedDir()),
+    )
 
 def getCachedDir():
     d = pathlib.Path("./cached")

@@ -2,7 +2,7 @@
 import ujson
 import re
 import markdownify
-from .utils import getHfFile, getCachedFileJson
+from ..utils import getHfFile, getCachedFileJson
 
 # copied from https://github.com/lm-sys/FastChat/blob/main/fastchat/data/clean_sharegpt.py
 div_pattern = re.compile("<div.*?>")

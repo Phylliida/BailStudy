@@ -1,5 +1,6 @@
 from typing import List, Dict
 import vllm
+from .utils import getCachedFileJson
 from .data.shareGPT import loadShareGPT
 from .data.wildchat import loadWildchat
 from .prompts.bailTool import getBailTool
@@ -56,7 +57,7 @@ def getRollouts(llm, conversations: List[List[Dict[str, str]]], maxGenerationTok
 
 
 
-def run():
+def runBailOnRealData():
     models = [
         "google/gemma-2-2b-it",
         "Qwen/Qwen2.5-7B-Instruct",
@@ -80,7 +81,7 @@ def run():
         for dataName, dataFunc in dataFuncs:
             def generateModelRolloutsFunc():
                 print("Running rollout on model " + modelStr + " on data " + dataName)
-                llm = vllm.LLM(model)
+                llm = vllm.LLM(modelStr)
                 data = dataFunc()
                 return getRollouts(llm=llm,
                                    conversations=data[:10000],
@@ -94,5 +95,6 @@ def run():
             modelOutputs, changed = getCachedFileJson(cachedOutputPath, generateModelRolloutsFunc, returnIfChanged=True)
             if changed: return # restart script whenever change params so don't run out of memory
 
+
 if __name__ == "__main__":
-    run()
+    runBailOnRealData()

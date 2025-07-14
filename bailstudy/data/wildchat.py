@@ -1,4 +1,4 @@
-from .utils import getCachedFileJson, getHfFile
+from ..utils import getCachedFileJson, getHfFile
 import pandas as pd
 
 def loadWildchat():
