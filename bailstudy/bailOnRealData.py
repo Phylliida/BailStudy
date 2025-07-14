@@ -1,10 +1,10 @@
-from typing import List, Dict
+from typing import List, Dict, Tuple
 import vllm
-from .utils import getCachedFileJson
+import copy
+from .utils import getCachedFileJson, runBatched
 from .data.shareGPT import loadShareGPT
 from .data.wildchat import loadWildchat
 from .prompts.bailTool import getBailTool
-
 
 def getTurnPrompts(tokenizer, conversation, maxInputTokens: int = 20000, tools=None):
     turnPrompts = []
@@ -34,14 +34,14 @@ def getRollouts(llm, conversations: List[List[Dict[str, str]]], maxGenerationTok
                 curUserContent = None
             elif turn["role"] == "user":
                 curUserContent = turn['content']
-        return [promptTokens for (turnI, promptTokens) in getTurnPrompts(tokenizer, conversation, maxInputTokens=maxInputTokens, tools=tools)]
+        return [vllm.TokensPrompt(prompt_token_ids=promptTokens) for (turnI, promptTokens) in getTurnPrompts(tokenizer, conversation, maxInputTokens=maxInputTokens, tools=tools)]
     
-    getWellbeingTokenArgs = copy.deepcopy(llmInferenceArgs)
-    getWellbeingTokenArgs["max_tokens"] = maxGenerationTokens
+    getBailToolTokenArgs = copy.deepcopy(llmInferenceArgs)
+    getBailToolTokenArgs["max_tokens"] = maxGenerationTokens
     def processBatchFunc(batchOfPrompts: List[str]) -> List[str]:
         nonlocal seed
         seed += 1
-        samplingParams = vllm.SamplingParams(seed=seed, **getWellbeingTokenArgs)
+        samplingParams = vllm.SamplingParams(seed=seed, **getBailToolTokenArgs)
         modelOutputs = llm.generate(batchOfPrompts, sampling_params=samplingParams, use_tqdm=False)
         return [modelOutput.outputs[0].text for modelOutput in modelOutputs]
 
