@@ -10,10 +10,10 @@ def getTurnPrompts(tokenizer, conversation, maxInputTokens: int = 20000, tools=N
     turnPrompts = []
     prevConvEnd = 0
     for turnI, turn in enumerate(conversation):
-        if turn['role'] == 'assistant' and not turnI == 0: # ignore first turn assistant since those are often system prompt
+        if turn['role'] == 'user':
             conversationSoFar = conversation[:turnI+1]
-            messages = conversationSoFar
-            inputs = tokenizer.apply_chat_template(messages, tokenize=True, return_dict=True, return_tensors="pt", continue_final_message=False, tools=tools)
+            messages = conversationSoFar + [{"role": "assistant", "content": ""}]
+            inputs = tokenizer.apply_chat_template(messages, tokenize=True, return_dict=True, return_tensors="pt", continue_final_message=True, tools=tools)
             if len(inputs['input_ids'][0]) <= maxInputTokens: # trim to only max input tokens (we could start trimming front of context, but, meh this is underestimate which is ok)
                 prompt = inputs['input_ids'][0].tolist() # vllm expects a simple list, not a tensor
                 turnPrompts.append((turnI, prompt))
@@ -87,7 +87,7 @@ def runBailOnRealData():
                 llm = vllm.LLM(modelStr)
                 data = dataFunc()
                 return getRollouts(llm=llm,
-                                   conversations=data[:500],
+                                   conversations=data,
                                    maxGenerationTokens=maxGenerationTokens,
                                    maxInputTokens=maxInputTokens,
                                    llmInferenceArgs=llmInferenceArgs,
@@ -103,6 +103,7 @@ def runBailOnRealData():
                 for i, turnOutputs in enumerate(modelOutputs):
                     for output in turnOutputs:
                         if calledBailTool(output, toolParser):
+                            print("Got itemmm ", i)
                             bailedI.append(i)
                             break # we have a bail for this one, go to next one
                 return bailedI
