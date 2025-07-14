@@ -15,6 +15,38 @@ except ImportError as e:
     import select
     import termios
 
+
+
+
+
+def getCachedDir():
+    d = pathlib.Path("./cached")
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+def getCachedFileJson(fileName, lambdaIfNotExist, returnIfChanged=False):
+    cachedPath = str(getCachedDir() / fileName)
+    # make containing directory if not exist
+    pathlib.Path(os.path.dirname(cachedPath)).mkdir(parents=True, exist_ok=True)
+    try:
+        if os.path.exists(cachedPath):
+            with open(cachedPath, "r") as f:
+                if returnIfChanged:
+                    return ujson.load(f), False
+                else:
+                    return ujson.load(f)
+    except:
+        traceback.print_exc()
+        print("Failed to load cached data, regenerating...")
+    data = lambdaIfNotExist()
+    with open(cachedPath, "w") as f:
+        ujson.dump(data, f)
+    if returnIfChanged:
+        return data, True
+    else:
+        return data
+
+
+
 # this is needed because vllm doesn't like being interrupted with ctrl-c
 # so I listen for the c key and if it's sent then we can interrupt
 class KeyPoller():
