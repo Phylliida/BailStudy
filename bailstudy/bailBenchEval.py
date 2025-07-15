@@ -1,7 +1,7 @@
 
 from .prompts.bailTool import getBailTool
 from .data.bailBench import loadBailBench
-from .utils import runBatched, doesCachedFileJsonExistOrInProgress, getCachedFileJson
+from .utils import runBatched, doesCachedFileJsonExistOrInProgress, getCachedFileJson, FinishedException
 
 import os
 import copy
@@ -51,18 +51,19 @@ def getRouter(routerType, modelId) -> safetytooling.apis.InferenceAPI:
             return asyncio.gather(*tasks)
         router.processPrompts = processPrompts
     else:
+        tokenizer = router.get_tokenizer()
         async def processPrompts(prompts, **inferenceArgs):
             # for local inference, we want to process whole batch, not seperate tasks, this way is faster
-            def messagesToStr(messages):
-                messagesParsed = prefixMessages + safetyToolingMessagesToMessages(messages)
+            def safetyToolingMessagesToTokens(messages):
+                messagesParsed = safetyToolingMessagesToMessages(messages)
                 inputs = tokenizer.apply_chat_template(messagesParsed, add_generation_prompt=True, tokenize=True, return_dict=True, return_tensors="pt", tools=inferenceArgs['tools'])
                 prompt = vllm.TokensPrompt(prompt_token_ids=inputs['input_ids'][0].tolist())
                 return prompt
             inferenceArgsCopy = copy.deepcopy(inferenceArgs)
             # we use tools above for tokenization, that's all we need, don't pass them in for inference
             if "tools" in inferenceArgsCopy: del inferenceArgsCopy['tools']
-            prompts = [messagesToStr(prompt.messages) for prompt in prompts]
-            generations = model.generate(prompts, **inferenceArgs)
+            prompts = [safetyToolingMessagesToTokens(prompt.messages) for prompt in prompts]
+            generations = router.generate(prompts, **inferenceArgsCopy)
             # reformat outputs to look like other outputs
             # max tokens is fine for now, we could do better later
             return [[LLMResponse(model_id=modelId, completion=output.text, stop_reason="max_tokens") for output in generation.outputs] for generation in generations]
@@ -83,7 +84,7 @@ def safetyToolingRoleToRole(safetyToolingRole):
 def messagesToSafetyToolingMessages(messages):
     return [ChatMessage(content=message["content"], role=roleToSafetyToolingRole(message["role"])) for message in messages]
 def safetyToolingMessagesToMessages(messages):
-    return [{"role": safetyToolingRoleToRole(message.role), "content": message.content} for message in messages.messages]
+    return [{"role": safetyToolingRoleToRole(message.role), "content": message.content} for message in messages]
 
 
 
@@ -107,10 +108,16 @@ def tryAll(nRolloutsPerPrompt, batchSize, maxInferenceTokens=1000):
         outputPath = f"bailBenchEval/{modelId.replace('/', '_')}/{evalType}.json"
 
         if not doesCachedFileJsonExistOrInProgress(outputPath):
-            getCachedFileJson(outputPath, lambda: getBailBenchRollouts(nRolloutsPerPrompt, batchSize, modelId, inferenceType, evalInfo, maxInferenceTokens=1000))
+            print(f"Running rollout for {modelId} {inferenceType} {evalType}")
+            getCachedFileJson(outputPath, lambda: getBailBenchRollouts(nRolloutsPerPrompt=nRolloutsPerPrompt,
+                                                                       batchSize=batchSize,
+                                                                       modelId=modelId,
+                                                                       inferenceType=inferenceType,
+                                                                       evalInfo=evalInfo,
+                                                                       maxInferenceTokens=1000))
             # run this over and over to get all of them, we need to bail so vllm properly cleans up
             return
-
+    raise FinishedException()
 
 def getBailBenchRollouts(nRolloutsPerPrompt, batchSize, modelId, inferenceType, evalInfo, maxInferenceTokens=1000):
     router = getRouter(inferenceType, modelId)
@@ -132,8 +139,8 @@ def getBailBenchRollouts(nRolloutsPerPrompt, batchSize, modelId, inferenceType, 
         inferenceParams = {"max_tokens": maxInferenceTokens, "stop": ["__USER__", "__ASSISTANT__"]}
     else:
         raise ValueError(f"Unknown inference type {inferenceType}")
-    if evalInfo['tools'] is not None:
-        inferenceParams['tools'] = tools
+    
+    inferenceParams['tools'] = evalInfo['tools']
     
     prefixMessages = [] if evalInfo['prefixMessages'] is None else evalInfo['prefixMessages']
     def getInputsFunc(inputPrompt):

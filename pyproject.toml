@@ -27,6 +27,7 @@ dependencies = [
     "huggingface-hub",
     "langchain",
     "transformers",
+    "safetytooling @ https://github.com/safety-research/safety-tooling.git"
 ]
 dynamic = ["version"]
 

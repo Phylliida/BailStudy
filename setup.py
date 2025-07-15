@@ -17,5 +17,5 @@ setuptools.setup(
     ],
     packages = setuptools.find_packages(),
     python_requires = ">=3.6",
-    install_requires = ["vllm", "pandas", "numpy", "torch", "ujson", "setuptools", "pyarrow", "markdownify", "pytz", "huggingface-hub", "langchain", "transformers"]
+    install_requires = ["vllm", "pandas", "numpy", "torch", "ujson", "setuptools", "pyarrow", "markdownify", "pytz", "huggingface-hub", "langchain", "transformers", "safetytooling @ https://github.com/safety-research/safety-tooling.git"]
 )

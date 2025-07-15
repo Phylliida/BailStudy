@@ -1,7 +1,7 @@
 from typing import List, Dict, Tuple
 import vllm
 import copy
-from .utils import getCachedFileJson, runBatched
+from .utils import getCachedFileJson, runBatched, FinishedException
 from .data.shareGPT import loadShareGPT
 from .data.wildchat import loadWildchat
 from .prompts.bailTool import getBailTool, getToolParser, calledBailTool
@@ -110,7 +110,7 @@ def runBailOnRealData():
 
             cachedToolsCalledPath = "bailOnRealData/whereToolsCalled/" + modelDataStr + ".json"
             modelOutputs, changed = getCachedFileJson(cachedToolsCalledPath, getDataPointsWhereToolsCalledFunc, returnIfChanged=True)
-
+    raise FinishedException()
                 
 
 

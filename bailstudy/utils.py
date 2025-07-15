@@ -333,3 +333,5 @@ def runBatchedIterator(inputs, n, getInputs, processBatch, processOutput, batchS
 
 
 
+class FinishedException(Exception):
+    pass
