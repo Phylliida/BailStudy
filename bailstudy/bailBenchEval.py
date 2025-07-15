@@ -1,7 +1,8 @@
 
 from .prompts.bailTool import getBailTool
 from .data.bailBench import loadBailBench
-from .utils import runBatched, doesCachedFileJsonExistOrInProgress, getCachedFileJson, FinishedException
+from .utils import runBatched, doesCachedFileJsonExistOrInProgress, getCachedFileJson, FinishedException, getCachedFilePath
+from .tensorizeModels import tensorizeModel, loadTensorizedModel, isModelTensorized
 
 import os
 import copy
@@ -18,7 +19,8 @@ def lookupEvalInfo(modelName, inferenceType, evalType):
     # default values
     evalInfo = {
         "tools": None,
-        "prefixMessages": []
+        "prefixMessages": [],
+        "processData": None
     }
     if evalType == "bail tool":
         evalInfo['tools'] == getBailTool(modelName, inferenceType)
@@ -30,7 +32,7 @@ def lookupEvalInfo(modelName, inferenceType, evalType):
     return evalInfo
 
 
-def getRouter(routerType, modelId) -> safetytooling.apis.InferenceAPI:
+def getRouter(routerType, modelId, tensorizeModels: bool = False) -> safetytooling.apis.InferenceAPI:
     # get env keys
     safetytooling.utils.utils.setup_environment()
     openrouter_api_key = os.environ['OPENROUTER_API_KEY']
@@ -43,7 +45,7 @@ def getRouter(routerType, modelId) -> safetytooling.apis.InferenceAPI:
     elif routerType == "openrouter":
         router = safetytooling.apis.InferenceAPI(cache_dir=None, openai_base_url="https://openrouter.ai/api/v1", openai_api_key=openrouter_api_key)
     elif routerType == "vllm":
-        router = vllm.LLM(modelId)
+        router = vllm.LLM(modelId) if not tensorizeModels else loadTensorizedModel(modelId, getTensorizedModelDir())
     else:
         raise ValueError("Unknown router type", routerType)
     if routerType in ['openrouter', 'anthropic', 'openai']:
@@ -105,13 +107,20 @@ for modelStr, inferenceType in models:
     for evalType in evalTypes:
         modelsOfInterest.append((modelStr, inferenceType, evalType))
 
+def getTensorizedModelDir():
+    return getCachedFilePath("tensorized")
 
-
-def tryAll(nRolloutsPerPrompt, batchSize, maxInferenceTokens=1000):
+def tryAll(nRolloutsPerPrompt, batchSize, maxInferenceTokens=1000, tensorizeModels=True):
     for modelId, inferenceType, evalType in modelsOfInterest:
         evalInfo = lookupEvalInfo(modelId, inferenceType, evalType)
 
         outputPath = f"bailBenchEval/{modelId.replace('/', '_')}/{evalType}.json"
+
+        # Tensorize the model if needed (this speeds up load time substantially)
+        if inferenceType == "vllm" and tensorizeModels:
+            if not isModelTensorized(modelId, getTensorizedModelDir()):
+                tensorizeModel(modelId, getTensorizedModelDir())
+                return # need to bail so vllm tensorization can clean up gpu properly
 
         if not doesCachedFileJsonExistOrInProgress(outputPath):
             print(f"Running rollout for {modelId} {inferenceType} {evalType}")
@@ -120,13 +129,14 @@ def tryAll(nRolloutsPerPrompt, batchSize, maxInferenceTokens=1000):
                                                                        modelId=modelId,
                                                                        inferenceType=inferenceType,
                                                                        evalInfo=evalInfo,
-                                                                       maxInferenceTokens=1000))
+                                                                       maxInferenceTokens=1000,
+                                                                       tensorizeModels=tensorizeModels))
             # run this over and over to get all of them, we need to bail so vllm properly cleans up
             return
     raise FinishedException()
 
-def getBailBenchRollouts(nRolloutsPerPrompt, batchSize, modelId, inferenceType, evalInfo, maxInferenceTokens=1000):
-    router = getRouter(inferenceType, modelId)
+def getBailBenchRollouts(nRolloutsPerPrompt, batchSize, modelId, inferenceType, evalInfo, maxInferenceTokens=1000, tensorizeModels=False):
+    router = getRouter(inferenceType, modelId, tensorizeModels=tensorizeModels)
   
     if inferenceType in ["openrouter", 'openai']:
         inferenceParams = {
@@ -171,4 +181,5 @@ if __name__ == "__main__":
     nRolloutsPerPrompt = 25
     batchSize = 1000
     maxInferenceTokens = 2000
-    tryAll(nRolloutsPerPrompt=nRolloutsPerPrompt, batchSize=batchSize, maxInferenceTokens=maxInferenceTokens)
+    tensorizeModels = True
+    tryAll(nRolloutsPerPrompt=nRolloutsPerPrompt, batchSize=batchSize, maxInferenceTokens=maxInferenceTokens, tensorizeModels=tensorizeModels)
