@@ -28,6 +28,11 @@ def getHfFile(repoId, fileName):
         cache_dir = str(getCachedDir()),
     )
 
+
+def doesCachedFileJsonExist(fileName):
+    cachedPath = str(getCachedDir() / fileName)
+    return os.path.exists(cachedPath)
+
 def getCachedDir():
     d = pathlib.Path("./cached")
     d.mkdir(parents=True, exist_ok=True)
@@ -311,4 +316,6 @@ def runBatchedIterator(inputs, n, getInputs, processBatch, processOutput, batchS
         
         for output in onDemandBatchedIter(inputs, runOnBatchedFunc):
             yield output
-                
+
+
+
