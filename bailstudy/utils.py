@@ -29,16 +29,21 @@ def getHfFile(repoId, fileName):
     )
 
 
-def doesCachedFileJsonExist(fileName):
-    cachedPath = str(getCachedDir() / fileName)
-    return os.path.exists(cachedPath)
+def getCachedFilePath(fileName):
+    return str(getCachedDir() / fileName)
+def getCachedInProgressFilePath(fileName):
+    return str(getCachedDir() / fileName) + "inprogress"
+
+def doesCachedFileJsonExistOrInProgress(fileName):
+    return os.path.exists(getCachedFilePath(fileName)) or os.path.exists(getCachedInProgressFilePath(fileName))
 
 def getCachedDir():
     d = pathlib.Path("./cached")
     d.mkdir(parents=True, exist_ok=True)
     return d
 def getCachedFileJson(fileName, lambdaIfNotExist, returnIfChanged=False):
-    cachedPath = str(getCachedDir() / fileName)
+    cachedInProgressPath = getCachedInProgressFilePath(fileName)
+    cachedPath = getCachedFilePath(fileName)
     # make containing directory if not exist
     pathlib.Path(os.path.dirname(cachedPath)).mkdir(parents=True, exist_ok=True)
     try:
@@ -51,13 +56,22 @@ def getCachedFileJson(fileName, lambdaIfNotExist, returnIfChanged=False):
     except:
         traceback.print_exc()
         print("Failed to load cached data, regenerating...")
-    data = lambdaIfNotExist()
-    with open(cachedPath, "w") as f:
-        ujson.dump(data, f)
-    if returnIfChanged:
-        return data, True
-    else:
-        return data
+    try:
+        with open(cachedInProgressPath, "w") as f:
+            f.write("a")
+        
+        data = lambdaIfNotExist()
+        with open(cachedPath, "w") as f:
+            ujson.dump(data, f)
+        if returnIfChanged:
+            return data, True
+        else:
+            return data
+    finally:
+        # clean up progress if failed, so other people can try it
+        # or if we finished, this cleans it up so we don't clutter
+        if os.path.exists(cachedInProgressPath):
+            os.remove(cachedInProgressPath)
 
 
 
