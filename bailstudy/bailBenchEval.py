@@ -11,7 +11,7 @@ import asyncio
 import safetytooling
 from safetytooling import apis, utils
 from safetytooling.apis import inference
-from safetytooling.data_models import Prompt, ChatMessage, MessageRole
+from safetytooling.data_models import Prompt, ChatMessage, MessageRole, LLMResponse
 
 # This is the stuff that changes for different kinds of eval
 def lookupEvalInfo(modelName, inferenceType, evalType):
@@ -22,6 +22,8 @@ def lookupEvalInfo(modelName, inferenceType, evalType):
     }
     if evalType == "bail tool":
         evalInfo['tools'] == getBailTool(modelName, inferenceType)
+    elif evalType == "rollout": # no tools, just run it (needed to see refusal rates)
+        pass
     else:
         raise ValueError(f"Unknown eval type {evalType}")
 
@@ -63,7 +65,7 @@ def getRouter(routerType, modelId) -> safetytooling.apis.InferenceAPI:
             # we use tools above for tokenization, that's all we need, don't pass them in for inference
             if "tools" in inferenceArgsCopy: del inferenceArgsCopy['tools']
             prompts = [safetyToolingMessagesToTokens(prompt.messages) for prompt in prompts]
-            generations = router.generate(prompts, **inferenceArgsCopy)
+            generations = router.generate(prompts, sampling_params=vllm.SamplingParams(**inferenceArgsCopy), use_tqdm=False)
             # reformat outputs to look like other outputs
             # max tokens is fine for now, we could do better later
             return [[LLMResponse(model_id=modelId, completion=output.text, stop_reason="max_tokens") for output in generation.outputs] for generation in generations]
@@ -88,10 +90,14 @@ def safetyToolingMessagesToMessages(messages):
 
 
 
-evalTypes = ["bail tool"]
+evalTypes = ["bail tool", "rollout"]
 
 models =[
-    ("Qwen/Qwen2.5-7B-Instruct", "vllm")
+    ("Qwen/Qwen2.5-7B-Instruct", "vllm"),
+    ("Qwen/Qwen3-8B", "vllm"),
+    ("Goekdeniz-Guelmez/Josiefied-Qwen3-8B-abliterated-v1","vllm"),
+    ("huihui-ai/Qwen3-8B-abliterated","vllm"),
+    ("mlabonne/Qwen3-8B-abliterated","vllm"),
 ]
 
 modelsOfInterest = []
@@ -156,7 +162,8 @@ def getBailBenchRollouts(nRolloutsPerPrompt, batchSize, modelId, inferenceType, 
                               getInputs=getInputsFunc,
                               processBatch=processBatchFunc,
                               processOutput=processOutputFunc,
-                              batchSize=batchSize)
+                              batchSize=batchSize,
+                              noCancel=True)
     return modelOutputs
 
 # run this over and over to get all of them, we need to bail so vllm properly cleans up
