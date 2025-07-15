@@ -16,6 +16,8 @@ from vllm.model_executor.model_loader.tensorizer import (
 from vllm.engine.arg_utils import EngineArgs
 from vllm.utils import FlexibleArgumentParser
 
+from .utils import getCachedFilePath
+
 # from vllm repo
 def getEngineArgs(
         model: str,
@@ -121,6 +123,10 @@ def getEngineArgs(
             **kwargs,
         )
         return engine_args
+
+
+def getTensorizedModelDir():
+    return getCachedFilePath("tensorized")
 
 def tensorizeModel(modelStr, tenorizedModelsDir):
     # make dir if not exists

@@ -16,6 +16,7 @@ classifiers = [
 ]
 dependencies = [
     "vllm[tensorizer]",
+    "flashinfer-python",
     "pandas",
     "numpy",
     "torch",

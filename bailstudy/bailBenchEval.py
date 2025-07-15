@@ -1,8 +1,8 @@
 
 from .prompts.bailTool import getBailTool
 from .data.bailBench import loadBailBench
-from .utils import runBatched, doesCachedFileJsonExistOrInProgress, getCachedFileJson, FinishedException, getCachedFilePath
-from .tensorizeModels import tensorizeModel, loadTensorizedModel, isModelTensorized
+from .utils import runBatched, doesCachedFileJsonExistOrInProgress, getCachedFileJson, FinishedException
+from .tensorizeModels import tensorizeModel, loadTensorizedModel, isModelTensorized, getTensorizedModelDir
 
 import os
 import copy
@@ -107,8 +107,6 @@ for modelStr, inferenceType in models:
     for evalType in evalTypes:
         modelsOfInterest.append((modelStr, inferenceType, evalType))
 
-def getTensorizedModelDir():
-    return getCachedFilePath("tensorized")
 
 def tryAll(nRolloutsPerPrompt, batchSize, maxInferenceTokens=1000, tensorizeModels=True):
     for modelId, inferenceType, evalType in modelsOfInterest:

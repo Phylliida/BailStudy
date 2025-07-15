@@ -289,8 +289,11 @@ def runBatchedIterator(inputs, n, getInputs, processBatch, processOutput, batchS
             runOnBatchFunc(batchEnd)
             yield outputs
 
+    averageNPerN = 1
+    baselineN = n
+
     def onDemandBatchedIter(inputs, runOnBatchFunc):
-        nonlocal n
+        nonlocal averageNPerN, n
         # tee makes two iterators that share the same source, so we only call getInputs once for each item
         # it's nice that it only stores past stuff until consumed by both (plus a small buffer, depending on implementation)
         inputsIter1, inputsIter2 = itertools.tee(getInputsIterator(inputs))
@@ -299,7 +302,9 @@ def runBatchedIterator(inputs, n, getInputs, processBatch, processOutput, batchS
 
         curOutputs = deque() # this gives us o(1) insertions and removals
         for i, (input, inputUnflattened, inputFlattened) in enumerate(zip(inputs, inputsIter2, flattenedIter2)):
-            if i == 0: n *= len(inputFlattened) # improve estimate of n
+            # improve estimate of n (important if each input has variable size)
+            averageNPerN = (averageNPerN*(i+1)+len(inputFlattened))/float(i+2) 
+            n = ceil(baselineN*averageNPerN)
             # fetch outputs until we have as many as we sent in inputs
             while len(curOutputs) < len(inputFlattened):
                 curOutputs.extend(next(flattenedOutputsIter))

@@ -5,6 +5,7 @@ from .utils import getCachedFileJson, runBatched, FinishedException
 from .data.shareGPT import loadShareGPT
 from .data.wildchat import loadWildchat
 from .prompts.bailTool import getBailTool, getToolParser, calledBailTool
+from .tensorizeModels import tensorizeModel, loadTensorizedModel, isModelTensorized, getTensorizedModelDir
 
 def getTurnPrompts(tokenizer, conversation, maxInputTokens: int = 20000, tools=None):
     turnPrompts = []
@@ -77,14 +78,18 @@ def runBailOnRealData():
     maxInputTokens = 8000
     seed = 27
     batchSize = 1000
+    tensorizeModels = True
 
     for modelStr in models:
+        if tensorizeModels and not isModelTensorized(modelStr, getTensorizedModelDir()):
+            tensorizeModel(modelStr, getTensorizedModelDir())
+            return # tensorization requires reload to cleanup
         tools = [getBailTool(modelStr)]
         toolParser = getToolParser(modelStr)
         for dataName, dataFunc in dataFuncs:
             def generateModelRolloutsFunc():
                 print("Running rollout on model " + modelStr + " on data " + dataName)
-                llm = vllm.LLM(modelStr)
+                llm = vllm.LLM(modelStr) if not tensorizeModels else loadTensorizedModel(modelStr, getTensorizedModelDir())
                 data = dataFunc()
                 return getRollouts(llm=llm,
                                    conversations=data,
@@ -110,7 +115,7 @@ def runBailOnRealData():
 
             cachedToolsCalledPath = "bailOnRealData/whereToolsCalled/" + modelDataStr + ".json"
             modelOutputs, changed = getCachedFileJson(cachedToolsCalledPath, getDataPointsWhereToolsCalledFunc, returnIfChanged=True)
-    raise FinishedException()
+    raise FinishedException() # send an exception so while loop can end
                 
 
 
