@@ -30,6 +30,8 @@ This will gather data for all plots related to bail bench. It may take a few wee
 You can speed it up by running it on multiple machines (it'll automatically distribute work between them),
 just make sure both machines run the code in the same directory so they can coordinate.
 
+`./cached` will contain tensorized models (for quick loading during these measurements) as well as outputs from the experiments.
+
 ```
 while python -m bailstudy.bailBenchEval; do :; done
 ```
