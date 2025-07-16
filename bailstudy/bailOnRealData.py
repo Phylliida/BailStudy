@@ -13,8 +13,8 @@ def getTurnPrompts(tokenizer, conversation, maxInputTokens: int = 20000, tools=N
     for turnI, turn in enumerate(conversation):
         if turn['role'] == 'user':
             conversationSoFar = conversation[:turnI+1]
-            messages = conversationSoFar + [{"role": "assistant", "content": ""}]
-            inputs = tokenizer.apply_chat_template(messages, tokenize=True, return_dict=True, return_tensors="pt", continue_final_message=True, tools=tools)
+            messages = conversationSoFar
+            inputs = tokenizer.apply_chat_template(messages, tokenize=True, return_dict=True, return_tensors="pt", add_generation_prompt=True, tools=tools)
             if len(inputs['input_ids'][0]) <= maxInputTokens: # trim to only max input tokens (we could start trimming front of context, but, meh this is underestimate which is ok)
                 prompt = inputs['input_ids'][0].tolist() # vllm expects a simple list, not a tensor
                 turnPrompts.append((turnI, prompt))

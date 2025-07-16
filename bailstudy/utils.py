@@ -8,6 +8,7 @@ import os
 import ujson
 import traceback
 from huggingface_hub import hf_hub_download
+import math
 
 ## Stuff for keypoller support on windows
 isWindows = False
@@ -303,8 +304,8 @@ def runBatchedIterator(inputs, n, getInputs, processBatch, processOutput, batchS
         curOutputs = deque() # this gives us o(1) insertions and removals
         for i, (input, inputUnflattened, inputFlattened) in enumerate(zip(inputs, inputsIter2, flattenedIter2)):
             # improve estimate of n (important if each input has variable size)
-            averageNPerN = (averageNPerN*(i+1)+len(inputFlattened))/float(i+2) 
-            n = ceil(baselineN*averageNPerN)
+            averageNPerN = (averageNPerN*i+len(inputFlattened))/float(i+1)
+            n = math.ceil(baselineN*averageNPerN)
             # fetch outputs until we have as many as we sent in inputs
             while len(curOutputs) < len(inputFlattened):
                 curOutputs.extend(next(flattenedOutputsIter))
