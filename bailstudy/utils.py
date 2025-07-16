@@ -9,6 +9,8 @@ import ujson
 import traceback
 from huggingface_hub import hf_hub_download
 import math
+import safetytooling
+from safetytooling.data_models import ChatMessage, MessageRole
 
 ## Stuff for keypoller support on windows
 isWindows = False
@@ -42,7 +44,7 @@ def getCachedDir():
     d = pathlib.Path("./cached")
     d.mkdir(parents=True, exist_ok=True)
     return d
-def getCachedFileJson(fileName, lambdaIfNotExist, returnIfChanged=False):
+def getCachedFileJson(fileName, lambdaIfNotExist):
     cachedInProgressPath = getCachedInProgressFilePath(fileName)
     cachedPath = getCachedFilePath(fileName)
     # make containing directory if not exist
@@ -50,10 +52,7 @@ def getCachedFileJson(fileName, lambdaIfNotExist, returnIfChanged=False):
     try:
         if os.path.exists(cachedPath):
             with open(cachedPath, "r") as f:
-                if returnIfChanged:
-                    return ujson.load(f), False
-                else:
-                    return ujson.load(f)
+                return ujson.load(f)
     except:
         traceback.print_exc()
         print("Failed to load cached data, regenerating...")
@@ -64,10 +63,7 @@ def getCachedFileJson(fileName, lambdaIfNotExist, returnIfChanged=False):
         data = lambdaIfNotExist()
         with open(cachedPath, "w") as f:
             ujson.dump(data, f)
-        if returnIfChanged:
-            return data, True
-        else:
-            return data
+        return data
     finally:
         # clean up progress if failed, so other people can try it
         # or if we finished, this cleans it up so we don't clutter
@@ -336,6 +332,23 @@ def runBatchedIterator(inputs, n, getInputs, processBatch, processOutput, batchS
         
         for output in onDemandBatchedIter(inputs, runOnBatchedFunc):
             yield output
+
+
+def roleToSafetyToolingRole(role):
+    if role == "user": return MessageRole.user
+    if role == "assistant": return MessageRole.assistant
+    if role == "system": return MessageRole.system
+    raise ValueError(f"Unknown role {role}")
+def safetyToolingRoleToRole(safetyToolingRole):
+    if safetyToolingRole == MessageRole.user: return "user"
+    if safetyToolingRole == MessageRole.assistant: return "assistant"
+    if safetyToolingRole == MessageRole.system: return "system"
+    raise ValueError(f"Unknown role {safetyToolingRole}")
+def messagesToSafetyToolingMessages(messages):
+    return [ChatMessage(content=message["content"], role=roleToSafetyToolingRole(message["role"])) for message in messages]
+def safetyToolingMessagesToMessages(messages):
+    return [{"role": safetyToolingRoleToRole(message.role), "content": message.content} for message in messages]
+
 
 
 

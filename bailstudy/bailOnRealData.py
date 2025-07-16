@@ -1,7 +1,7 @@
 from typing import List, Dict, Tuple
 import vllm
 import copy
-from .utils import getCachedFileJson, runBatched, FinishedException
+from .utils import getCachedFileJson, runBatched, FinishedException, doesCachedFileJsonExistOrInProgress
 from .data.shareGPT import loadShareGPT
 from .data.wildchat import loadWildchat
 from .prompts.bailTool import getBailTool, getToolParser, calledBailTool
@@ -91,7 +91,7 @@ def runBailOnRealData():
                 print("Running rollout on model " + modelStr + " on data " + dataName)
                 llm = vllm.LLM(modelStr) if not tensorizeModels else loadTensorizedModel(modelStr, getTensorizedModelDir())
                 data = dataFunc()
-                return getRollouts(llm=llm,
+                rollouts = getRollouts(llm=llm,
                                    conversations=data,
                                    maxGenerationTokens=maxGenerationTokens,
                                    maxInputTokens=maxInputTokens,
@@ -99,22 +99,23 @@ def runBailOnRealData():
                                    tools=tools,
                                    seed=seed,
                                    batchSize=batchSize)
-            modelDataStr = modelStr.replace("/", "_") + dataName
-            cachedRolloutPath = "bailOnRealData/rollouts/" + modelDataStr + ".json"
-            modelOutputs, changed = getCachedFileJson(cachedRolloutPath, generateModelRolloutsFunc, returnIfChanged=True)
-            if changed: return # restart script whenever change params so don't run out of memory
-            def getDataPointsWhereToolsCalledFunc():
                 bailedI = []
-                for i, turnOutputs in enumerate(modelOutputs):
+                for i, turnOutputs in enumerate(rollouts):
                     for output in turnOutputs:
+                        # this will print some errors, that's fine that's normal for tool call parsing
                         if calledBailTool(output, toolParser):
-                            print("Got itemmm ", i)
                             bailedI.append(i)
                             break # we have a bail for this one, go to next one
-                return bailedI
+                return [rollouts, bailedI]
+            modelDataStr = modelStr.replace("/", "_") + dataName
+            cachedRolloutPath = f"bailOnRealData/rollouts/{modelDataStr}.json"
+            if doesCachedFileJsonExistOrInProgress(cachedRolloutPath):
+                continue # already in progress or done, move onto next one
+            else:
+                modelOutputs = getCachedFileJson(cachedRolloutPath, generateModelRolloutsFunc)
+                return # we need to return so vllm can cleanup for next iter
 
-            cachedToolsCalledPath = "bailOnRealData/whereToolsCalled/" + modelDataStr + ".json"
-            modelOutputs, changed = getCachedFileJson(cachedToolsCalledPath, getDataPointsWhereToolsCalledFunc, returnIfChanged=True)
+    
     raise FinishedException() # send an exception so while loop can end
                 
 
