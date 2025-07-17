@@ -35,3 +35,23 @@ just make sure both machines run the code in the same directory so they can coor
 ```
 while python -m bailstudy.bailBenchEval; do :; done
 ```
+
+## Troubleshooting
+
+### Model stuck on downloading
+
+Run
+
+```
+ps -aux | grep python
+```
+
+And send `kill -9 processId` to each listed process.
+
+Then run
+
+```
+export HF_HUB_DISABLE_XET="1"
+```
+
+and retry. See [this thread](https://github.com/huggingface/hf_transfer/issues/30#issuecomment-2878604131)
