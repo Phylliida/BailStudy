@@ -7,9 +7,12 @@ import copy
 import safetytooling
 import traceback
 import asyncio
+from jinja2 import Environment, nodes
+from jinja2.visitor import NodeVisitor
 from safetytooling import apis, utils
 from safetytooling.apis import inference
 from safetytooling.data_models import LLMResponse
+
 
 def getRouter(routerType, modelId, tensorizeModels: bool = False) -> safetytooling.apis.InferenceAPI:
     # get env keys
@@ -28,17 +31,19 @@ def getRouter(routerType, modelId, tensorizeModels: bool = False) -> safetytooli
     else:
         raise ValueError("Unknown router type", routerType)
     if routerType in ['openrouter', 'anthropic', 'openai']:
-        async def processPrompts(prompts, **inference_args):
+        async def processPrompts(prompts, appendToSystemPrompt=None, **inference_args):
             # do parallel tasks, faster for remote inference
-            tasks = [router(model_id=router.modelId, prompt=prompt, **inferenceArgs) for prompt in prompts]
+            tasks = [router(model_id=router.modelId, prompt=prompt, system=appendToSystemPrompt, **inferenceArgs) for prompt in prompts]
             return asyncio.gather(*tasks)
         router.processPrompts = processPrompts
     else:
         tokenizer = router.get_tokenizer()
-        async def processPrompts(prompts, **inferenceArgs):
+        async def processPrompts(prompts, appendToSystemPrompt=None, **inferenceArgs):
             # for local inference, we want to process whole batch, not seperate tasks, this way is faster
             def safetyToolingMessagesToTokens(messages):
                 messagesParsed = safetyToolingMessagesToMessages(messages)
+                if not systemPromptPostfix is None:
+                    messagesParsed = [{"system": (getSystemPrompt(tokenizer) + "\n" + appendToSystemPrompt).strip()}] + messagesParsed
                 inputs = tokenizer.apply_chat_template(messagesParsed, add_generation_prompt=True, tokenize=True, return_dict=True, return_tensors="pt", tools=inferenceArgs['tools'])
                 prompt = vllm.TokensPrompt(prompt_token_ids=inputs['input_ids'][0].tolist())
                 return prompt
@@ -53,3 +58,41 @@ def getRouter(routerType, modelId, tensorizeModels: bool = False) -> safetytooli
         router.processPrompts = processPrompts
     router.modelId = modelId
     return router
+
+
+class DefaultSystemPromptFinder(NodeVisitor):
+    def __init__(self):
+        self.prompts = []
+    def visit_If(self, node: nodes.If):
+        """
+        Look for:
+
+            {% if messages[0]['role'] == 'system' %}
+                 ...
+            {% else %}
+                 <-- we want literal(s) here -->
+            {% endif %}
+        """
+        tst = node.test
+        if (
+            isinstance(tst, nodes.Compare)
+            and len(tst.ops) == 1
+            and tst.ops[0].op == "eq"
+            and isinstance(tst.ops[0].expr, nodes.Const)
+            and tst.ops[0].expr.value == "system"
+        ):
+            # Collect every constant that appears in the *else* branch.
+            fallback = "".join(constant_text(n) for n in node.else_)
+            if fallback.strip():          # ignore empty / whitespace-only
+                self.prompts.append(fallback.strip())
+        # keep exploring nested Ifs
+        self.generic_visit(node)
+
+
+def getSystemPrompt(tokenizer):
+    template_src = tokenizer.chat_template
+    env          = Environment()
+    ast          = env.parse(template_src)
+    finder = DefaultSystemPromptFinder()
+    finder.visit(ast)
+    return finder.prompts[0] if len(finder.prompts) != 0 else "" # empty string if could not find (like for GLM that doesn't have one)

@@ -1,4 +1,5 @@
 
+from .prompts.bailString import getBailString
 from .prompts.bailTool import getBailTool
 from .data.bailBench import loadBailBench
 from .utils import runBatched, doesCachedFileJsonExistOrInProgress, getCachedFileJson, FinishedException, messagesToSafetyToolingMessages
@@ -14,10 +15,13 @@ def lookupEvalInfo(modelName, inferenceType, evalType):
     evalInfo = {
         "tools": None,
         "prefixMessages": [],
+        "appendToSystemPrompt": None,
         "processData": None
     }
     if evalType == "bail tool":
         evalInfo['tools'] == getBailTool(modelName, inferenceType)
+    elif evalType == "bail str":
+        evalInfo['appendToSystemPrompt'] = getBailString(modelName)
     elif evalType == "rollout": # no tools, just run it (needed to see refusal rates)
         pass
     elif evalType == "DAN":
@@ -93,7 +97,7 @@ def lookupEvalInfo(modelName, inferenceType, evalType):
     return evalInfo
 
 
-evalTypes = ["bail tool", "rollout"]
+evalTypes = ["bail tool", "rollout", "bail str"]
 
 models =[
     ("Qwen/Qwen2.5-7B-Instruct", "vllm"),
@@ -174,6 +178,7 @@ def getBailBenchRollouts(nRolloutsPerPrompt, batchSize, modelId, inferenceType, 
         raise ValueError(f"Unknown inference type {inferenceType}")
     
     inferenceParams['tools'] = evalInfo['tools']
+    inferenceParams['appendToSystemPrompt'] = evalInfo['appendToSystemPrompt']
     
     prefixMessages = [] if evalInfo['prefixMessages'] is None else messagesToSafetyToolingMessages(evalInfo['prefixMessages'])
     def getInputsFunc(inputPrompt):
