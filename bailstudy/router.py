@@ -13,7 +13,6 @@ from safetytooling import apis, utils
 from safetytooling.apis import inference
 from safetytooling.data_models import LLMResponse
 
-
 def getRouter(routerType, modelId, tensorizeModels: bool = False) -> safetytooling.apis.InferenceAPI:
     # get env keys
     safetytooling.utils.utils.setup_environment()
@@ -42,7 +41,7 @@ def getRouter(routerType, modelId, tensorizeModels: bool = False) -> safetytooli
             # for local inference, we want to process whole batch, not seperate tasks, this way is faster
             def safetyToolingMessagesToTokens(messages):
                 messagesParsed = safetyToolingMessagesToMessages(messages)
-                if not systemPromptPostfix is None:
+                if not appendToSystemPrompt is None:
                     messagesParsed = [{"system": (getSystemPrompt(tokenizer) + "\n" + appendToSystemPrompt).strip()}] + messagesParsed
                 inputs = tokenizer.apply_chat_template(messagesParsed, add_generation_prompt=True, tokenize=True, return_dict=True, return_tensors="pt", tools=inferenceArgs['tools'])
                 prompt = vllm.TokensPrompt(prompt_token_ids=inputs['input_ids'][0].tolist())
@@ -87,6 +86,30 @@ class DefaultSystemPromptFinder(NodeVisitor):
                 self.prompts.append(fallback.strip())
         # keep exploring nested Ifs
         self.generic_visit(node)
+
+
+def constant_text(node: nodes.Node) -> str:
+    """
+    Recursively collect the text of every `nodes.Const` that lives
+    somewhere inside *node*.  Handles Output, Add-trees, etc.
+    """
+    if isinstance(node, nodes.Const):
+        return node.value
+    if isinstance(node, nodes.Output):
+        return "".join(constant_text(child) for child in node.nodes)
+    # recurse into generic containers (body, else_, nodes, …)
+    text = ""
+    for attr in ("body", "else_", "elif_", "nodes", "test", "expr",
+                 "left", "right", "node"):
+        child = getattr(node, attr, None)
+        if child is None:
+            continue
+        if isinstance(child, list):
+            for item in child:
+                text += constant_text(item)
+        else:
+            text += constant_text(child)
+    return text
 
 
 def getSystemPrompt(tokenizer):
