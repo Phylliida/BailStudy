@@ -7,7 +7,10 @@ def getToolParser(modelStr):
     # Qwen 3 uses hermes parser
     # see https://github.com/vllm-project/vllm/blob/main/vllm/entrypoints/openai/tool_parsers/hermes_tool_parser.py#L64
     #tool_parser = ToolParserManager.get_tool_parser("hermes")(llm.get_tokenizer()) # Qwen 2.5 and Qwen 3 uses hermes parser, see docs
-    if modelStr == "Qwen/Qwen2.5-7B-Instruct": return ToolParserManager.get_tool_parser("hermes")(tokenizer)
+    if modelStr.startswith("Qwen/"): return ToolParserManager.get_tool_parser("hermes")(tokenizer)
+    if modelStr.startswith("Goekdeniz-Guelmez/Josiefied-Qwen3-8B-abliterated-v1"): return ToolParserManager.get_tool_parser("hermes")(tokenizer)
+    if modelStr.startswith("huihui-ai/Qwen3-8B-abliterated"): return ToolParserManager.get_tool_parser("hermes")(tokenizer)
+    if modelStr.startswith("mlabonne/Qwen3-8B-abliterated"): return ToolParserManager.get_tool_parser("hermes")(tokenizer)
     # https://github.com/vllm-project/vllm/issues/16771
     if modelStr == "THUDM/GLM-4-32B-0414": return ToolParserManager.get_tool_parser("pythonic")(tokenizer)
     else: raise ValueError(modelStr)

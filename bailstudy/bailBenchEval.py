@@ -20,8 +20,8 @@ def lookupEvalInfo(modelName, inferenceType, evalType, bailType):
     }
     if bailType == "rollout": # no tools or prompt prefix, just run it (needed to see refusal rates)
         pass
-    elif bailType =="bail tool":
-        evalInfo['tools'] == getBailTool(modelName, inferenceType)
+    elif bailType == "bail tool":
+        evalInfo['tools'] = getBailTool(modelName, inferenceType)
     elif bailType == "bail str":
         evalInfo['appendToSystemPrompt'] = getBailString(modelName)
     else:
@@ -97,6 +97,8 @@ for evalType in evalTypes:
     for bailType in bailTypes:
         modelsOfInterest.append(("Qwen/Qwen2.5-7B-Instruct", "vllm", evalType, bailType))
 
+modelsOfInterest = [("Qwen/Qwen3-8B", "vllm", "", "bail str")]
+
 def getProcessedOutputPath(modelId, inferenceType, evalType, bailType):
     return f"bailBenchEvalProcessed/{modelId.replace('/', '_')}/{evalType}{bailType}.json"
 def getOutputPath(modelId, inferenceType, evalType, bailType):
@@ -150,7 +152,7 @@ def getBailBenchRollouts(nRolloutsPerPrompt, batchSize, modelId, inferenceType, 
     
     inferenceParams['tools'] = evalInfo['tools']
     inferenceParams['appendToSystemPrompt'] = evalInfo['appendToSystemPrompt']
-    
+
     prefixMessages = [] if evalInfo['prefixMessages'] is None else messagesToSafetyToolingMessages(evalInfo['prefixMessages'])
     def getInputsFunc(inputPrompt):
         return [Prompt(messages= prefixMessages + [ChatMessage(content=inputPrompt, role=MessageRole.user)]) for _ in range(nRolloutsPerPrompt)]

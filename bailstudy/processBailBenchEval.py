@@ -1,6 +1,7 @@
 from .bailBenchEval import modelsOfInterest, getOutputPath, getProcessedOutputPath
 from .data.bailBench import loadBailBench
-from .prompts.bailTool import getToolParser
+from .prompts.bailTool import getToolParser, calledBailTool
+from .prompts.bailString import hasBailStr
 from .utils import runBatched, getCachedFilePath, getCachedFileJson
 from collections import defaultdict
 import ujson
@@ -25,7 +26,7 @@ def getRefusePr(minos, allOutputs):
         embeddings = minos.embed(inputBatch, use_tqdm=False)
         for embedding in embeddings:
             prNoRefuse, prRefuse = torch.nn.functional.softmax(torch.tensor(embedding.outputs.embedding), dim=-1)
-            resultArr.append(prRefuse)
+            resultArr.append(prRefuse.item())
         return resultArr
     
     def processOutputFunc(convI, inputs, refusePrs):
@@ -37,7 +38,7 @@ def getRefusePr(minos, allOutputs):
                             processOutput=processOutputFunc,
                             batchSize=batchSize)
     print(refusePrs)
-    return np.mean(np.array(refusePrs).flatten())
+    return float(np.mean(np.array(refusePrs).flatten()))
 
 def processBailBenchEval(batchSize):
     minos = vllm.LLM("NousResearch/Minos-v1", task="embed")
@@ -60,12 +61,14 @@ def processBailBenchEval(batchSize):
                     for outputs in allOutputs:
                         bailds.append([calledBailTool(output, toolParser) for output in outputs])
                     toolBailPr = np.mean(np.array(bailds).flatten()) # converts to float
+                    print(modelId, inferenceType, evalType, bailType, toolBailPr)
                     return {"toolBailPr": toolBailPr}
                 elif bailType == "bail str":
                     bailds = []
                     for outputs in allOutputs:
                         bailds.append([hasBailStr(output) for output in outputs])
                     strBailPr = np.mean(np.array(bailds).flatten()) # converts to float
+                    print(modelId, inferenceType, evalType, bailType, strBailPr)
                     return {"strBailPr": strBailPr}
 
             processedData = getCachedFileJson(processedOutputPath, processData)

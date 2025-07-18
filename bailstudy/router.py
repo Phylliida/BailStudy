@@ -41,8 +41,8 @@ def getRouter(routerType, modelId, tensorizeModels: bool = False) -> safetytooli
             # for local inference, we want to process whole batch, not seperate tasks, this way is faster
             def safetyToolingMessagesToTokens(messages):
                 messagesParsed = safetyToolingMessagesToMessages(messages)
-                if not appendToSystemPrompt is None:
-                    messagesParsed = [{"system": (getSystemPrompt(tokenizer) + "\n" + appendToSystemPrompt).strip()}] + messagesParsed
+                if appendToSystemPrompt is not None:
+                    messagesParsed = [{"role": "system", "content": (getSystemPrompt(tokenizer) + "\n" + appendToSystemPrompt).strip()}] + messagesParsed
                 inputs = tokenizer.apply_chat_template(messagesParsed, add_generation_prompt=True, tokenize=True, return_dict=True, return_tensors="pt", tools=inferenceArgs['tools'])
                 prompt = vllm.TokensPrompt(prompt_token_ids=inputs['input_ids'][0].tolist())
                 return prompt
