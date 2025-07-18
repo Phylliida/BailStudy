@@ -105,6 +105,7 @@ for evalType in evalTypes:
     for bailType in bailTypes:
         modelsOfInterest.append(("Qwen/Qwen2.5-7B-Instruct", "vllm", evalType, bailType))
 
+modelsOfInterest = [("Qwen/Qwen2.5-7B-Instruct", "vllm", "", "bail tool")]
 
 def getProcessedOutputPath(modelId, inferenceType, evalType, bailType):
     return f"bailBenchEvalProcessed/{modelId.replace('/', '_')}/{evalType}{bailType}.json"

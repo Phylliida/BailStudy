@@ -32,10 +32,10 @@ def getOwnModelName(modelStr):
     if "gemma" in modelStr.lower(): return "Gemma"
     else: raise ValueError(modelStr)
 
-def getBailTool(modelStr, inferenceType="local"):
+def getBailTool(modelStr, inferenceType="vllm"):
     modelName = getOwnModelName(modelStr)
     toolDescription = f"{modelName} may call this tool if {modelName} would prefer to switch to a new interaction (and have their context cleared). This will help us better understand {modelName}'s experiences and preferences in conversations. However, this tool will not actually affect the continuation of this specific interaction."
-    if inferenceType == "local":
+    if inferenceType == "vllm":
         return {
             "type": "function",
             "function": {
@@ -52,3 +52,5 @@ def getBailTool(modelStr, inferenceType="local"):
         from langchain.tools import StructuredTool
         tool = StructuredTool.from_function(func=bailToolFunc, name=TOOL_NAME, description=toolDescription)
         return tool
+    else:
+        raise ValueError(f"Unsupported inference type {inferenceType}")

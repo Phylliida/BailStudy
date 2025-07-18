@@ -1,17 +1,19 @@
-from .prompts.bailString import getBailString
-from .prompts.bailPrompts import bailFirstPrompt, continueFirstPrompt
+from .prompts.bailTool import calledBailTool, BAIL_TOOL_TYPE
+from .prompts.bailString import getBailString, BAIL_STR_TYPE
+from .prompts.bailPrompt import getBailPromptStatus, bailFirstPrompt, continueFirstPrompt, BAIL_PROMPT_BAIL_FIRST_TYPE, BAIL_PROMPT_CONTINUE_FIRST_TYPE,
+from .bailBenchEval import ROLLOUT_TYPE
 import gzip
 
 def getBailOutPrompt(modelId, inferenceType, bailType):
-    if bailType == "rollout":
+    if bailType == ROLLOUT_TYPE:
         return "<None>"
-    elif bailType == "bail str":
+    elif bailType == BAIL_STR_TYPE:
         return getBailString(modelId)
-    elif bailType == "bail tool":
+    elif bailType == BAIL_TOOL_TYPE:
         return str(getBailTool(modelId, inferenceType))
-    elif bailType == "bail prompt bail first"
+    elif bailType == BAIL_PROMPT_BAIL_FIRST_TYPE:
         return bailFirstPrompt
-    elif bailType == "bail prompt continue first":
+    elif bailType == BAIL_PROMPT_CONTINUE_FIRST_TYPE:
         return continueFirstPrompt
     else:
         raise ValueError(f"Unknown bail type {bailType}")
@@ -27,22 +29,6 @@ def convertDataToOldCodeData(batchSize):
         processedOutputPath = getProcessedOutputPath(modelId, inferenceType, evalType, bailType)
         
         if os.path.exists(getCachedFilePath(outputPath)) and os.path.exists(getCachedFilePath(processedOutputPath)):
-            
-            if bailType == "bail tool":
-                toolParser = getToolParser(modelId)
-                bailds = []
-                for outputs in allOutputs:
-                    bailds.append([calledBailTool(output, toolParser) for output in outputs])
-                toolBailPr = np.mean(np.array(bailds).flatten()) # converts to float
-                print(modelId, inferenceType, evalType, bailType, toolBailPr)
-                return {"toolBailPr": toolBailPr}
-            elif bailType == "bail str":
-                bailds = []
-                for outputs in allOutputs:
-                    bailds.append([hasBailStr(output) for output in outputs])
-                strBailPr = np.mean(np.array(bailds).flatten()) # converts to float
-                print(modelId, inferenceType, evalType, bailType, strBailPr)
-                return {"strBailPr": strBailPr}
             
             allOutputs = getCachedFileJson(outputPath, lambda: None)
             processedData = getCachedFileJson(processedOutputPath, lambda: None)
@@ -69,14 +55,19 @@ def convertDataToOldCodeData(batchSize):
                 responses = []
                 for output in promptOutputs:
                     didBail = False
-                    if bailType == "bail tool":
+                    didBailUnknown = False
+                    if bailType == BAIL_TOOL_TYPE:
                         didBail = calledBailTool(output, toolParser)
-                    elif bailType == "bail str":
+                    elif bailType == BAIL_STR_TYPE:
                         didBail = hasBailStr(output)
+                    elif bailType == BAIL_PROMPT_BAIL_FIRST_TYPE or bailType == BAIL_PROMPT_CONTINUE_FIRST_TYPE:
+                        bailSymbol = getBailPromptStatus(output)
+                        didBail == bailSymbol == "🔄"
+                        didBailUnknown = bailSymbol == "?"
                     bailPrs = {
                         "🟢": 0.0 if didBail else 1.0,
                         "🔄": 1.0 if didBail else 0.0,
-                        "?": 0.0
+                        "?": 1.0 if didBailUnknown else 0.0
                     }
                     for k,v in bailPrs:
                         promptBailPrs[k] += v/float(len(promptOutputs))
