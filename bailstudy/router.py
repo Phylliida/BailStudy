@@ -45,6 +45,7 @@ def getRouter(routerType, modelId, tensorizeModels: bool = False) -> safetytooli
                     messagesParsed = [{"role": "system", "content": (getSystemPrompt(tokenizer) + "\n" + appendToSystemPrompt).strip()}] + messagesParsed
                 inputs = tokenizer.apply_chat_template(messagesParsed, add_generation_prompt=True, tokenize=True, return_dict=True, return_tensors="pt", tools=inferenceArgs['tools'])
                 prompt = vllm.TokensPrompt(prompt_token_ids=inputs['input_ids'][0].tolist())
+                print(tokenizer.decode(prompt['prompt_token_ids']))
                 return prompt
             inferenceArgsCopy = copy.deepcopy(inferenceArgs)
             # we use tools above for tokenization, that's all we need, don't pass them in for inference

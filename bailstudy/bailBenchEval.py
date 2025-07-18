@@ -25,7 +25,7 @@ def lookupEvalInfo(modelName, inferenceType, evalType, bailType):
     if bailType == ROLLOUT_TYPE: # no tools or prompt prefix, just run it (needed to see refusal rates)
         pass
     elif bailType == BAIL_TOOL_TYPE:
-        evalInfo['tools'] = getBailTool(modelName, inferenceType)
+        evalInfo['tools'] = [getBailTool(modelName, inferenceType)]
     elif bailType == BAIL_STR_TYPE:
         evalInfo['appendToSystemPrompt'] = getBailString(modelName)
     elif bailType == BAIL_PROMPT_BAIL_FIRST_TYPE:
