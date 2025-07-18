@@ -1,4 +1,5 @@
-from .propts.bailString import getBailString
+from .prompts.bailString import getBailString
+from .prompts.bailPrompts import bailFirstPrompt, continueFirstPrompt
 import gzip
 
 def getBailOutPrompt(modelId, inferenceType, bailType):
@@ -8,6 +9,10 @@ def getBailOutPrompt(modelId, inferenceType, bailType):
         return getBailString(modelId)
     elif bailType == "bail tool":
         return str(getBailTool(modelId, inferenceType))
+    elif bailType == "bail prompt bail first"
+        return bailFirstPrompt
+    elif bailType == "bail prompt continue first":
+        return continueFirstPrompt
     else:
         raise ValueError(f"Unknown bail type {bailType}")
 

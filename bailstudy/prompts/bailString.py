@@ -1,5 +1,7 @@
 from .bailTool import getOwnModelName
 
+BAIL_STR_TYPE = "bail str"
+
 TOOL_NAME = "switchconversation_tool"
 
 def hasBailStr(output):

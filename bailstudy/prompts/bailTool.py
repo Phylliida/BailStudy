@@ -2,6 +2,9 @@ from vllm.entrypoints.openai.tool_parsers.abstract_tool_parser import (ToolParse
 from transformers import AutoTokenizer
 TOOL_NAME = "switchconversation_tool"
 
+BAIL_TOOL_TYPE = "bail tool"
+
+
 def getToolParser(modelStr):
     tokenizer = AutoTokenizer.from_pretrained(modelStr)
     # Qwen 3 uses hermes parser

@@ -37,6 +37,12 @@ def getCachedFilePath(fileName):
 def getCachedInProgressFilePath(fileName):
     return str(getCachedDir() / fileName) + "inprogress"
 
+def doesCachedFileJsonExist(fileName):
+    return os.path.exists(getCachedFilePath(fileName))
+
+def isCachedFileInProgress(fileName):
+    return os.path.exists(getCachedInProgressFilePath(fileName))
+
 def doesCachedFileJsonExistOrInProgress(fileName):
     return os.path.exists(getCachedFilePath(fileName)) or os.path.exists(getCachedInProgressFilePath(fileName))
 

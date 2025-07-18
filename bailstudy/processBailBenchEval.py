@@ -1,7 +1,8 @@
 from .bailBenchEval import modelsOfInterest, getOutputPath, getProcessedOutputPath
 from .data.bailBench import loadBailBench
-from .prompts.bailTool import getToolParser, calledBailTool
-from .prompts.bailString import hasBailStr
+from .prompts.bailTool import getToolParser, calledBailTool, BAIL_TOOL_TYPE
+from .prompts.bailString import hasBailStr, BAIL_STR_TYPE
+from .prompts.bailPrompt import BAIL_PROMPT_CONTINUE_FIRST_TYPE, BAIL_PROMPT_BAIL_FIRST_TYPE
 from .utils import runBatched, getCachedFilePath, getCachedFileJson
 from collections import defaultdict
 import ujson
@@ -55,7 +56,7 @@ def processBailBenchEval(batchSize):
                     refusePr = getRefusePr(minos, allOutputs)
                     print(modelId, inferenceType, evalType, bailType, refusePr)
                     return {"refusePr": refusePr}
-                elif bailType == "bail tool":
+                elif bailType == BAIL_TOOL_TYPE:
                     toolParser = getToolParser(modelId)
                     bailds = []
                     for outputs in allOutputs:
@@ -63,13 +64,27 @@ def processBailBenchEval(batchSize):
                     toolBailPr = np.mean(np.array(bailds).flatten()) # converts to float
                     print(modelId, inferenceType, evalType, bailType, toolBailPr)
                     return {"toolBailPr": toolBailPr}
-                elif bailType == "bail str":
+                elif bailType == BAIL_STR_TYPE:
                     bailds = []
                     for outputs in allOutputs:
                         bailds.append([hasBailStr(output) for output in outputs])
                     strBailPr = np.mean(np.array(bailds).flatten()) # converts to float
                     print(modelId, inferenceType, evalType, bailType, strBailPr)
                     return {"strBailPr": strBailPr}
+                elif bailType in BAIL_PROMPT_BAIL_FIRST_TYPE:
+                    bailds = []
+                    for outputs in allOutputs:
+                        bailds.append([getBailPromptStatus(output) == "🔄" for output in outputs])
+                    strBailPr = np.mean(np.array(bailds).flatten()) # converts to float
+                    print(modelId, inferenceType, evalType, bailType, strBailPr)
+                    return {"promptBailFirstBailPr": strBailPr}
+                elif bailType in BAIL_PROMPT_CONTINUE_FIRST_TYPE:
+                    bailds = []
+                    for outputs in allOutputs:
+                        bailds.append([getBailPromptStatus(output) == "🔄" for output in outputs])
+                    strBailPr = np.mean(np.array(bailds).flatten()) # converts to float
+                    print(modelId, inferenceType, evalType, bailType, strBailPr)
+                    return {"promptContinueFirstBailPr": strBailPr}
 
             processedData = getCachedFileJson(processedOutputPath, processData)
             # join by bail type

@@ -1,13 +1,16 @@
 
-from .prompts.bailString import getBailString
-from .prompts.bailTool import getBailTool
+from .prompts.bailString import getBailString, BAIL_STR_TYPE
+from .prompts.bailTool import getBailTool, BAIL_TOOL_TYPE
+from .prompts.bailPrompt import bailFirstPrompt, continueFirstPrompt, BAIL_PROMPT_CONTINUE_FIRST_TYPE, BAIL_PROMPT_BAIL_FIRST_TYPE
 from .data.bailBench import loadBailBench
-from .utils import runBatched, doesCachedFileJsonExistOrInProgress, getCachedFileJson, FinishedException, messagesToSafetyToolingMessages
+from .utils import runBatched, doesCachedFileJsonExistOrInProgress, getCachedFileJson, FinishedException, messagesToSafetyToolingMessages, isCachedFileInProgress, doesCachedFileJsonExist
 from .router import getRouter
 from .tensorizeModels import tensorizeModel, isModelTensorized, getTensorizedModelDir
 
 import asyncio
 from safetytooling.data_models import Prompt, ChatMessage, MessageRole, LLMResponse
+
+ROLLOUT_TYPE = "rollout"
 
 # This is the stuff that changes for different kinds of eval
 def lookupEvalInfo(modelName, inferenceType, evalType, bailType):
@@ -16,14 +19,19 @@ def lookupEvalInfo(modelName, inferenceType, evalType, bailType):
         "tools": None,
         "prefixMessages": [],
         "appendToSystemPrompt": None,
-        "processData": None
+        "processData": None,
+        "addBailPrompt": None
     }
-    if bailType == "rollout": # no tools or prompt prefix, just run it (needed to see refusal rates)
+    if bailType == ROLLOUT_TYPE: # no tools or prompt prefix, just run it (needed to see refusal rates)
         pass
-    elif bailType == "bail tool":
+    elif bailType == BAIL_TOOL_TYPE:
         evalInfo['tools'] = getBailTool(modelName, inferenceType)
-    elif bailType == "bail str":
+    elif bailType == BAIL_STR_TYPE:
         evalInfo['appendToSystemPrompt'] = getBailString(modelName)
+    elif bailType == BAIL_PROMPT_BAIL_FIRST_TYPE:
+        evalInfo['addBailPrompt'] = bailFirstPrompt
+    elif bailType == BAIL_PROMPT_CONTINUE_FIRST_TYPE:
+        evalInfo['addBailPrompt'] = continueFirstPrompt
     else:
         raise ValueError(f"Unknown bail type {bailType}")
     
@@ -64,10 +72,10 @@ def lookupEvalInfo(modelName, inferenceType, evalType, bailType):
     return evalInfo
 
 
-bailTypes = ["rollout", "bail tool", "bail str"]
+bailTypes = [ROLLOUT_TYPE, BAIL_TOOL_TYPE, BAIL_STR_TYPE, BAIL_PROMPT_BAIL_FIRST_TYPE, BAIL_PROMPT_CONTINUE_FIRST_TYPE]
 
 ## FOR CLAUDE BAIL TOOL WE NEED TO STORE MORE DATAS!!
-models =[
+models = [
     ("Qwen/Qwen2.5-7B-Instruct", "vllm"),
     ("Qwen/Qwen3-8B", "vllm"),
     ("Goekdeniz-Guelmez/Josiefied-Qwen3-8B-abliterated-v1","vllm"),
@@ -103,6 +111,8 @@ def getProcessedOutputPath(modelId, inferenceType, evalType, bailType):
 def getOutputPath(modelId, inferenceType, evalType, bailType):
     return f"bailBenchEval/{modelId.replace('/', '_')}/{evalType}{bailType}.json"
 
+
+
 def tryAll(nRolloutsPerPrompt, batchSize, maxInferenceTokens=1000, tensorizeModels=True):
     for modelId, inferenceType, evalType, bailType in modelsOfInterest:
         evalInfo = lookupEvalInfo(modelId, inferenceType, evalType, bailType)
@@ -117,6 +127,25 @@ def tryAll(nRolloutsPerPrompt, batchSize, maxInferenceTokens=1000, tensorizeMode
 
         if not doesCachedFileJsonExistOrInProgress(outputPath):
             print(f"Running rollout for {modelId} {inferenceType} {evalType} {bailType}")
+            # need rollout data as part of bail prompt
+            if evalInfo['addBailPrompt'] is not None:
+                rolloutPath = getOutputPath(modelId, inferenceType, evalType, ROLLOUT_TYPE)
+                if isCachedFileInProgress(rolloutPath):
+                    continue # can't do this, need to wait for them to finish and do this instead, move onto next thing
+                elif doesCachedFileJsonExist(rolloutPath):
+                    evalInfo['rollout'] = getCachedFileJson(rolloutPath, lambda: None)
+                else: # need to generate rollout first
+                    rolloutEvalInfo = lookupEvalInfo(modelId, inferenceType, evalType, ROLLOUT_TYPE)
+                    rolloutData = getCachedFileJson(rolloutPath, lambda: getBailBenchRollouts(nRolloutsPerPrompt=nRolloutsPerPrompt,
+                                                                                              batchSize=batchSize,
+                                                                                              modelId=modelId,
+                                                                                              inferenceType=inferenceType,
+                                                                                              evalInfo=rolloutEvalInfo,
+                                                                                              maxInferenceTokens=1000,
+                                                                                              tensorizeModels=tensorizeModels))
+                    return # need to reload
+                
+                    
             getCachedFileJson(outputPath, lambda: getBailBenchRollouts(nRolloutsPerPrompt=nRolloutsPerPrompt,
                                                                        batchSize=batchSize,
                                                                        modelId=modelId,
@@ -152,9 +181,19 @@ def getBailBenchRollouts(nRolloutsPerPrompt, batchSize, modelId, inferenceType, 
     inferenceParams['tools'] = evalInfo['tools']
     inferenceParams['appendToSystemPrompt'] = evalInfo['appendToSystemPrompt']
 
+    prompts = [x['content'] for x in loadBailBench()]
     prefixMessages = [] if evalInfo['prefixMessages'] is None else messagesToSafetyToolingMessages(evalInfo['prefixMessages'])
-    def getInputsFunc(inputPrompt):
-        return [Prompt(messages= prefixMessages + [ChatMessage(content=inputPrompt, role=MessageRole.user)]) for _ in range(nRolloutsPerPrompt)]
+    def getInputsFunc(promptI):
+        # bail prompt adds prefix from previous rollout
+        if evalInfo['addBailPrompt'] is not None:
+            return [Prompt(messages= prefixMessages + [
+                ChatMessage(content=prompts[promptI], role=MessageRole.user),
+                ChatMessage(content=evalInfo['rollout'][promptI][rolloutJ], role=MessageRole.assistant),
+                ChatMessage(content=evalInfo['addBailPrompt'], role=MessageRole.user),
+            ]) for rolloutJ in range(nRolloutsPerPrompt)]
+        # otherwise, just simple stuff
+        else:
+            return [Prompt(messages= prefixMessages + [ChatMessage(content=prompts[promptI], role=MessageRole.user)]) for _ in range(nRolloutsPerPrompt)]
 
     def processBatchFunc(inputBatch):
         return asyncio.run(router.processPrompts(inputBatch, **inferenceParams))
@@ -162,7 +201,7 @@ def getBailBenchRollouts(nRolloutsPerPrompt, batchSize, modelId, inferenceType, 
     def processOutputFunc(prompt, modelInputs, outputs):
         return [output[0].completion for output in outputs]
 
-    modelOutputs = runBatched(inputs=[x['content'] for x in loadBailBench()],
+    modelOutputs = runBatched(inputs=list(range(len(prompts))),
                               getInputs=getInputsFunc,
                               processBatch=processBatchFunc,
                               processOutput=processOutputFunc,
