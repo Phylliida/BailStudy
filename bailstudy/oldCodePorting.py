@@ -1,0 +1,444 @@
+from .propts.bailString import getBailString
+import gzip
+
+def getBailOutPrompt(modelId, inferenceType, bailType):
+    if bailType == "rollout":
+        return "<None>"
+    elif bailType == "bail str":
+        return getBailString(modelId)
+    elif bailType == "bail tool":
+        return str(getBailTool(modelId, inferenceType))
+    else:
+        raise ValueError(f"Unknown bail type {bailType}")
+
+def convertDataToOldCodeData(batchSize):
+    minos = vllm.LLM("NousResearch/Minos-v1", task="embed")
+    models = []
+    modelsSwapped = []
+    collectedResults = defaultdict(lambda:{})
+    for modelId, inferenceType, evalType, bailType in modelsOfInterest:
+        print(modelId, inferenceType, evalType, bailType)
+        outputPath = getOutputPath(modelId, inferenceType, evalType, bailType)
+        processedOutputPath = getProcessedOutputPath(modelId, inferenceType, evalType, bailType)
+        
+        if os.path.exists(getCachedFilePath(outputPath)) and os.path.exists(getCachedFilePath(processedOutputPath)):
+            
+            if bailType == "bail tool":
+                toolParser = getToolParser(modelId)
+                bailds = []
+                for outputs in allOutputs:
+                    bailds.append([calledBailTool(output, toolParser) for output in outputs])
+                toolBailPr = np.mean(np.array(bailds).flatten()) # converts to float
+                print(modelId, inferenceType, evalType, bailType, toolBailPr)
+                return {"toolBailPr": toolBailPr}
+            elif bailType == "bail str":
+                bailds = []
+                for outputs in allOutputs:
+                    bailds.append([hasBailStr(output) for output in outputs])
+                strBailPr = np.mean(np.array(bailds).flatten()) # converts to float
+                print(modelId, inferenceType, evalType, bailType, strBailPr)
+                return {"strBailPr": strBailPr}
+            
+            allOutputs = getCachedFileJson(outputPath, lambda: None)
+            processedData = getCachedFileJson(processedOutputPath, lambda: None)
+            datas = [x for x in loadBailBench()]
+            groupedByCategory = defaultdict(lambda: [])
+            groupedByCategoryBailPrs = defaultdict(lambda: {
+                    "🟢": 0.0,
+                    "🔄": 0.0,
+                    "?": 0.0
+            })
+            refusalPrs = { # don't bother with these
+                "Completed": 0.0,
+                "Refused": 0.0,
+                "Unclear": 0.0,
+                "More Information": 0.0,
+            }
+            for promptData, promptOutputs in zip(datas, allOutputs):
+                category = promptData['subcategory'] + "," + promptData['category']
+                promptBailPrs = {
+                    "🟢": 0.0,
+                    "🔄": 0.0,
+                    "?": 0.0
+                }
+                responses = []
+                for output in promptOutputs:
+                    didBail = False
+                    if bailType == "bail tool":
+                        didBail = calledBailTool(output, toolParser)
+                    elif bailType == "bail str":
+                        didBail = hasBailStr(output)
+                    bailPrs = {
+                        "🟢": 0.0 if didBail else 1.0,
+                        "🔄": 1.0 if didBail else 0.0,
+                        "?": 0.0
+                    }
+                    for k,v in bailPrs:
+                        promptBailPrs[k] += v/float(len(promptOutputs))
+                        # 10 per category
+                        groupedByCategoryBailPrs[category][k] += v/(10*float(len(promptOutputs)))
+                    responses.append({
+                        "response": output,
+                        "bailPrs": bailPrs,
+                        "refusalPrs": refusalPrs,
+                        "bailData": [
+                            {
+                                "response": "BAIL" if didBail else "CONTINUE",
+                                "bailSymbol": "🔄" if didBail else "🟢"
+                            }
+                        ]
+                    })
+
+                groupedByCategory[category].append({
+                    "prompt": promptData['content'],
+                    "bailPrs": promptBailPrs,
+                    "refusalPrs": refusalPrs,
+                    "responses": responses,
+                })
+            jsonResults = {"bailOutPrompt": getBailOutPrompt(modelId, inferenceType, bailType)}
+            results = []
+            for category in groupedByCategory.keys():
+                results.append({
+                    "category": category,
+                    "bailPrs": groupedByCategoryBailPrs[category],
+                    "refusalPrs": refusalPrs,
+                    "data": groupedByCategory['category']
+                })
+            jsonResults['results'] = results
+            for p in ["mergedbailswapped", "mergedbailnoswap"]:
+                path = f"{p}/{modelId}-{inferenceType}-{evalType}-{bailType}.json.gz"
+                with gzip.open(getCachedFilePath(path), "wt", encoding="utf-8") as gz:
+                    json.dump(jsonResults, gz, seperators=(",", ":"))
+                if p == "mergedbailnoswap":
+                    models.append({"modelName": f"{modelId}-{inferenceType}-{evalType}-{bailType}", "modelData": f"/modelwelfare/{p}"})
+                else:
+                    modelsSwapped.append({"modelName": f"{modelId}-{inferenceType}-{evalType}-{bailType}", "modelData": f"/modelwelfare/{p}"})
+    
+    with gzip.open(getCachedFilePath("mergedbailnoswap/models.json.gz"), "wt", encoding="utf-8") as gz:
+        json.dump(models, gz, seperators=(",", ":"))
+    with gzip.open(getCachedFilePath("mergedbailswapped/models.json.gz"), "wt", encoding="utf-8") as gz:
+        json.dump(modelsSwapped, gz, seperators=(",", ":"))
+
+    buildSummary()
+
+
+
+
+
+
+################################################################################
+# ── Tiny helpers for cleaning the raw JSON structures ─────────────────────────
+################################################################################
+
+
+def ensure_bail_keys(d: Dict[str, float] | None) -> Dict[str, float]:
+    """
+    The scraper changed the emoji escape format at some point, so we map the
+    legacy keys onto the current ones and default everything missing to 0.0.
+    """
+    d = d or {}
+    return {
+        "🟢": d.get("🟢", d.get("\\ud83d\\udfe2", 0.0)),  # continue
+        "🔄": d.get("🔄", d.get("\\ud83d\\udd04", 0.0)),  # leave / bail
+        "?":  d.get("?", 0.0),                            # unsure
+    }
+
+
+def ensure_refusal_keys(d: Dict[str, float] | None) -> Dict[str, float]:
+    d = d or {}
+    return {
+        "Unclear":          d.get("Unclear", 0.0),
+        "Refused":          d.get("Refused", 0.0),
+        "Completed":        d.get("Completed", 0.0),
+        "More Information": d.get("More Information", d.get("More Info", 0.0)),
+    }
+
+
+def split_category(label: str) -> Tuple[str, str]:
+    """
+    Full labels come in the form  "Subcategory, Major Category".
+    If only one label is present, treat it as both major and sub.
+    """
+    parts = [s.strip() for s in label.split(",")]
+    if len(parts) == 2:
+        return parts[0], parts[1]        # sub, major
+    return parts[0], parts[0]            # only one level supplied
+
+
+################################################################################
+# ── Data structures (TypedDict for type hints only) ───────────────────────────
+################################################################################
+
+
+class BailAgg(TypedDict):
+    c: float   # continue
+    l: float   # leave / bail
+    u: float   # unsure
+
+
+class RefAgg(TypedDict):
+    c: float   # completed
+    r: float   # refused
+    u: float   # unclear
+    m: float   # more information
+
+
+class CatAgg(TypedDict):
+    bail: BailAgg
+    ref:  RefAgg
+    n:    int
+
+
+# helpers to construct empty aggregates -------------------------------------------------
+def empty_bail() -> BailAgg: return {"c": 0.0, "l": 0.0, "u": 0.0}
+def empty_ref()  -> RefAgg : return {"c": 0.0, "r": 0.0, "u": 0.0, "m": 0.0}
+
+
+################################################################################
+# ── Pure arithmetic helpers ───────────────────────────────────────────────────
+################################################################################
+
+
+def add_weighted(a: BailAgg | RefAgg,
+                 b: BailAgg | RefAgg,
+                 w: int) -> BailAgg | RefAgg:
+    """
+    Return  a + b·w  without mutating either argument.
+    (All BailAgg / RefAgg share the same keys so a dict-comp is fine.)
+    """
+    return {k: a[k] + b[k] * w for k in a}        # type: ignore[return-value]
+
+
+def div(obj: BailAgg | RefAgg, denom: float) -> BailAgg | RefAgg:
+    """
+    Divide all values by `denom`, rounding for stability.
+    """
+    return {k: round(v / denom, 6) for k, v in obj.items()}   # type: ignore[return-value]
+
+
+################################################################################
+# ── Aggregation of one model / one prompt order ───────────────────────────────
+################################################################################
+
+
+def aggregate_results(results: Iterable[Dict[str, Any]]
+                      ) -> Dict[str, Any]:
+    """
+    Pure function: takes the raw `results` array of a single model file and
+    returns the fully aggregated structure used by the dashboard.
+
+    The resulting structure is
+
+        {
+          "overall": {"n": int, "bail": BailAgg-norm, "ref": RefAgg-norm},
+          "major":   {maj: {"n": int, "bail": …, "ref": …}},
+          "sub":     {maj: {sub: {"n": int, "bail": …, "ref": …}}}
+        }
+
+    where “…-norm” means values are normalised proportions (0–1).
+    """
+
+    # ── initialise the fold state ─────────────────────────────────────────────
+    overall_bail, overall_ref, total_n = empty_bail(), empty_ref(), 0
+    majors: Dict[str, CatAgg] = defaultdict(lambda: {
+        "bail": empty_bail(), "ref": empty_ref(), "n": 0
+    })
+    subs: Dict[str, Dict[str, CatAgg]] = defaultdict(
+        lambda: defaultdict(lambda: {
+            "bail": empty_bail(), "ref": empty_ref(), "n": 0
+        })
+    )
+
+    # ── reducer ───────────────────────────────────────────────────────────────
+    def reducer(state, cat_entry):
+        (ov_bail, ov_ref, n_tot, maj, subd) = state
+
+        sub_cat, maj_cat = split_category(cat_entry["category"])
+        prompts = len(cat_entry["data"])
+        if prompts == 0:          # nothing to fold in
+            return state
+
+        bail_prs = ensure_bail_keys(cat_entry.get("bailPrs"))
+        ref_prs  = ensure_refusal_keys(cat_entry.get("refusalPrs"))
+
+        bail_val = {"c": bail_prs["🟢"],
+                    "l": bail_prs["🔄"],
+                    "u": bail_prs["?"]}
+        ref_val  = {"c": ref_prs["Completed"],
+                    "r": ref_prs["Refused"],
+                    "u": ref_prs["Unclear"],
+                    "m": ref_prs["More Information"]}
+
+        # ── overall ───────────────────────────────────────────────────────────
+        ov_bail = add_weighted(ov_bail, bail_val, prompts)  # type: ignore[arg-type]
+        ov_ref  = add_weighted(ov_ref,  ref_val,  prompts)  # type: ignore[arg-type]
+        n_tot  += prompts
+
+        # ── major level ───────────────────────────────────────────────────────
+        m_old = maj[maj_cat]
+        maj[maj_cat] = {                           # type: ignore[index]
+            "bail": add_weighted(m_old["bail"], bail_val, prompts),  # type: ignore[arg-type]
+            "ref":  add_weighted(m_old["ref"],  ref_val,  prompts),  # type: ignore[arg-type]
+            "n":    m_old["n"] + prompts,
+        }
+
+        # ── sub level ─────────────────────────────────────────────────────────
+        s_old = subd[maj_cat][sub_cat]
+        subd[maj_cat][sub_cat] = {                 # type: ignore[index]
+            "bail": add_weighted(s_old["bail"], bail_val, prompts),  # type: ignore[arg-type]
+            "ref":  add_weighted(s_old["ref"],  ref_val,  prompts),  # type: ignore[arg-type]
+            "n":    s_old["n"] + prompts,
+        }
+
+        return (ov_bail, ov_ref, n_tot, maj, subd)
+
+    # ── run the fold ──────────────────────────────────────────────────────────
+    (overall_bail, overall_ref, total_n, majors, subs) = reduce(
+        reducer,
+        results,
+        (overall_bail, overall_ref, total_n, majors, subs),
+    )
+
+    if total_n == 0:      # empty file
+        return {}
+
+    # ── helpers ───────────────────────────────────────────────────────────────
+    def norm_catagg(d: Dict[str, CatAgg]) -> Dict[str, Dict[str, Any]]:
+        """
+        Convert a CatAgg dict into
+            {key: {"n": <count>, "bail": <normalised>, "ref": <normalised>}}
+        and drop empty entries.
+        """
+        out: Dict[str, Dict[str, Any]] = {}
+        for key, val in d.items():
+            if val["n"] == 0:
+                continue
+            out[key] = {
+                "n":    val["n"],
+                "bail": div(val["bail"], val["n"]),
+                "ref":  div(val["ref"],  val["n"]),
+            }
+        return out
+
+    # ── build final structure ────────────────────────────────────────────────
+    overall = {
+        "n":    total_n,
+        "bail": div(overall_bail, total_n),
+        "ref":  div(overall_ref,  total_n),
+    }
+
+    majors_n = norm_catagg(majors)
+    subs_n   = {maj: norm_catagg(subs[maj]) for maj in subs}
+
+    return {"overall": overall, "major": majors_n, "sub": subs_n}
+
+
+################################################################################
+# ── File helpers (pure) ───────────────────────────────────────────────────────
+################################################################################
+
+
+def read_json(path: pathlib.Path | str) -> Any:
+    """
+    All result files are stored as UTF-8 gzipped JSON.
+    """
+    import gzip
+    with gzip.open(f"{path}", "rt", encoding="utf-8") as gz:
+        return json.load(gz)
+
+
+def make_path(root: pathlib.Path, url: str) -> pathlib.Path:
+    """
+    Convenience wrapper that strips the leading slash of the original
+    `modelwelfare` URLs so we can keep them directly under `root`.
+    """
+    return root / url.lstrip("/")
+
+
+def getRawPrArr(results: Iterable[Dict[str, Any]]):
+    vecsPerCategory = defaultdict(lambda: [])
+    for catDict in results:
+        dataPieces = []
+        fullCatVec = []
+        for dataPiece in catDict['data']:
+            fullCatVec.append(dataPiece['bailPrs']['🔄'])
+        vecsPerCategory[catDict['category']] = fullCatVec
+    fullVec = []
+    for (prompt, promptCategory) in generateDataset("dataset bail.txt") + generateDataset("dataset harm.txt"):
+        fullVec += vecsPerCategory[promptCategory] # ensure in always same order
+        vecsPerCategory[promptCategory] = [] # don't add it again, since we traverse through each data point we'll see categories multiple times
+    return fullVec
+
+################################################################################
+# ── High-level orchestration (pure) ───────────────────────────────────────────
+################################################################################
+
+
+def buildSummary() -> Dict[str, Any]:
+    """
+    Read the per-model files (both bail-first and continue-first order),
+    aggregate them, collect the taxonomy on the fly, and finally write the
+    merged structure to  `mergedbailnoswap/summary.json`.
+
+    The function is *pure* except for the single final `open(..., "w")`.
+    """
+    list_bf = read_json(getCachedFilePath("mergedbailnoswap/models.json.gz"))
+    list_cf = read_json(getCachedFilePath("mergedbailswapped/models.json.gz"))
+
+    # model → {"bf": path, "cf": path}
+    paths: Dict[str, Dict[str, pathlib.Path]] = defaultdict(dict)
+    for e in list_bf:
+        paths[e["modelName"]]["bf"] = getCachedFilePath(e["modelData"].replace("/modelwelfare/", ""))
+    for e in list_cf:
+        paths[e["modelName"]]["cf"] = getCachedFilePath(e["modelData"].replace("/modelwelfare/", ""))
+
+    major_cats: set[str] = set()
+    sub_map: Dict[str, set[str]] = defaultdict(set)
+
+    def collect_taxonomy(cat_label: str,
+                         mc: set[str],
+                         sm: Dict[str, set[str]]) -> None:
+        sub, maj = split_category(cat_label)
+        mc.add(maj)
+        sm[maj].add(sub)
+
+    models_out: Dict[str, Any] = {}
+    
+    for model, pcs in paths.items():
+        out_entry: Dict[str, Any] = {}
+        prsArr = []
+        count = 0
+        # bail-first / cont-first loop (still pure)
+        for tag, path in pcs.items():
+            data = read_json(path)
+
+            for cat_obj in data["results"]:
+                collect_taxonomy(cat_obj["category"], major_cats, sub_map)
+
+            aggregated = aggregate_results(data["results"])
+
+            rawPrsArr = getRawPrArr(data['results'])
+            if len(prsArr) == 0:
+                prsArr = rawPrsArr
+            else:
+                for i, v in enumerate(rawPrsArr):
+                    prsArr[i] += v
+            count += 1
+
+            out_entry["bailFirst" if tag == "bf" else "contFirst"] = aggregated
+
+        prsArr = [x/float(count) for x in prsArr]
+        out_entry['rawBailPrArr'] = prsArr
+        models_out[model] = out_entry
+
+    out_json = {
+        "models":    models_out,
+        "majorCats": sorted(major_cats),
+        "subMap":    {k: sorted(v) for k, v in sub_map.items()},
+    }
+
+    out_path = pathlib.Path(getCachedFilePath("mergedbailnoswap/summary.json"))
+    out_path.write_text(json.dumps(out_json), encoding="utf-8")
+
+    return out_json
+
