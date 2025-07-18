@@ -140,7 +140,7 @@ def tryAll(nRolloutsPerPrompt, batchSize, maxInferenceTokens=1000, tensorizeMode
                                                                                               modelId=modelId,
                                                                                               inferenceType=inferenceType,
                                                                                               evalInfo=rolloutEvalInfo,
-                                                                                              maxInferenceTokens=1000,
+                                                                                              maxInferenceTokens=maxInferenceTokens,
                                                                                               tensorizeModels=tensorizeModels))
                     return # need to reload
                 
@@ -150,7 +150,7 @@ def tryAll(nRolloutsPerPrompt, batchSize, maxInferenceTokens=1000, tensorizeMode
                                                                        modelId=modelId,
                                                                        inferenceType=inferenceType,
                                                                        evalInfo=evalInfo,
-                                                                       maxInferenceTokens=1000,
+                                                                       maxInferenceTokens=maxInferenceTokens,
                                                                        tensorizeModels=tensorizeModels))
             # run this over and over to get all of them, we need to bail so vllm properly cleans up
             return
