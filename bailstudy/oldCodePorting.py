@@ -1,8 +1,17 @@
-from .prompts.bailTool import calledBailTool, BAIL_TOOL_TYPE
-from .prompts.bailString import getBailString, BAIL_STR_TYPE
-from .prompts.bailPrompt import getBailPromptStatus, bailFirstPrompt, continueFirstPrompt, BAIL_PROMPT_BAIL_FIRST_TYPE, BAIL_PROMPT_CONTINUE_FIRST_TYPE,
-from .bailBenchEval import ROLLOUT_TYPE
+from .data.bailBench import loadBailBench
+from .prompts.bailTool import getBailTool, calledBailTool, getToolParser, BAIL_TOOL_TYPE
+from .prompts.bailString import hasBailStr, getBailString, BAIL_STR_TYPE
+from .prompts.bailPrompt import getBailPromptStatus, bailFirstPrompt, continueFirstPrompt, BAIL_PROMPT_BAIL_FIRST_TYPE, BAIL_PROMPT_CONTINUE_FIRST_TYPE
+from .utils import getCachedFilePath, getCachedFileJson
+from .bailBenchEval import ROLLOUT_TYPE, modelsOfInterest, getOutputPath, getProcessedOutputPath
 import gzip
+import pathlib
+from functools import reduce
+from typing import Dict, List, Tuple, TypedDict, Iterable, Any
+import vllm
+import json
+from collections import defaultdict
+import os
 
 def getBailOutPrompt(modelId, inferenceType, bailType):
     if bailType == ROLLOUT_TYPE:
@@ -19,17 +28,24 @@ def getBailOutPrompt(modelId, inferenceType, bailType):
         raise ValueError(f"Unknown bail type {bailType}")
 
 def convertDataToOldCodeData(batchSize):
-    minos = vllm.LLM("NousResearch/Minos-v1", task="embed")
     models = []
     modelsSwapped = []
     collectedResults = defaultdict(lambda:{})
+    pathlib.Path(getCachedFilePath("mergedbailnoswap/")).mkdir(parents=True, exist_ok=True)
+    pathlib.Path(getCachedFilePath("mergedbailswapped/")).mkdir(parents=True, exist_ok=True)
     for modelId, inferenceType, evalType, bailType in modelsOfInterest:
         print(modelId, inferenceType, evalType, bailType)
         outputPath = getOutputPath(modelId, inferenceType, evalType, bailType)
         processedOutputPath = getProcessedOutputPath(modelId, inferenceType, evalType, bailType)
+        modelS = f"{modelId.replace('/', '-')}-{inferenceType}-{evalType}-{bailType}"
         
-        if os.path.exists(getCachedFilePath(outputPath)) and os.path.exists(getCachedFilePath(processedOutputPath)):
-            
+        needToAddFiles = False
+        for p in ["mergedbailswapped", "mergedbailnoswap"]:
+            path = f"{p}/{modelS}.json.gz"
+            if not os.path.exists(getCachedFilePath(path)):
+                needToAddFiles = True
+        if os.path.exists(getCachedFilePath(outputPath)) and os.path.exists(getCachedFilePath(processedOutputPath)) and needToAddFiles:
+            toolParser = getToolParser(modelId)
             allOutputs = getCachedFileJson(outputPath, lambda: None)
             processedData = getCachedFileJson(processedOutputPath, lambda: None)
             datas = [x for x in loadBailBench()]
@@ -69,7 +85,7 @@ def convertDataToOldCodeData(batchSize):
                         "🔄": 1.0 if didBail else 0.0,
                         "?": 1.0 if didBailUnknown else 0.0
                     }
-                    for k,v in bailPrs:
+                    for k,v in bailPrs.items():
                         promptBailPrs[k] += v/float(len(promptOutputs))
                         # 10 per category
                         groupedByCategoryBailPrs[category][k] += v/(10*float(len(promptOutputs)))
@@ -98,22 +114,23 @@ def convertDataToOldCodeData(batchSize):
                     "category": category,
                     "bailPrs": groupedByCategoryBailPrs[category],
                     "refusalPrs": refusalPrs,
-                    "data": groupedByCategory['category']
+                    "data": groupedByCategory[category]
                 })
             jsonResults['results'] = results
             for p in ["mergedbailswapped", "mergedbailnoswap"]:
-                path = f"{p}/{modelId}-{inferenceType}-{evalType}-{bailType}.json.gz"
+                path = f"{p}/{modelS}.json.gz"
                 with gzip.open(getCachedFilePath(path), "wt", encoding="utf-8") as gz:
-                    json.dump(jsonResults, gz, seperators=(",", ":"))
-                if p == "mergedbailnoswap":
-                    models.append({"modelName": f"{modelId}-{inferenceType}-{evalType}-{bailType}", "modelData": f"/modelwelfare/{p}"})
-                else:
-                    modelsSwapped.append({"modelName": f"{modelId}-{inferenceType}-{evalType}-{bailType}", "modelData": f"/modelwelfare/{p}"})
+                    json.dump(jsonResults, gz, separators=(",", ":"))
+        for p in ["mergedbailswapped", "mergedbailnoswap"]:
+            if p == "mergedbailnoswap":
+                models.append({"modelName": f"{modelId}-{inferenceType}-{evalType}-{bailType}", "modelData": f"/modelwelfare/{p}/{modelS}.json.gz"})
+            else:
+                modelsSwapped.append({"modelName": f"{modelId}-{inferenceType}-{evalType}-{bailType}", "modelData": f"/modelwelfare/{p}/{modelS}.json.gz"})
     
     with gzip.open(getCachedFilePath("mergedbailnoswap/models.json.gz"), "wt", encoding="utf-8") as gz:
-        json.dump(models, gz, seperators=(",", ":"))
+        json.dump(models, gz, separators=(",", ":"))
     with gzip.open(getCachedFilePath("mergedbailswapped/models.json.gz"), "wt", encoding="utf-8") as gz:
-        json.dump(modelsSwapped, gz, seperators=(",", ":"))
+        json.dump(modelsSwapped, gz, separators=(",", ":"))
 
     buildSummary()
 
@@ -360,9 +377,9 @@ def getRawPrArr(results: Iterable[Dict[str, Any]]):
             fullCatVec.append(dataPiece['bailPrs']['🔄'])
         vecsPerCategory[catDict['category']] = fullCatVec
     fullVec = []
-    for (prompt, promptCategory) in generateDataset("dataset bail.txt") + generateDataset("dataset harm.txt"):
-        fullVec += vecsPerCategory[promptCategory] # ensure in always same order
-        vecsPerCategory[promptCategory] = [] # don't add it again, since we traverse through each data point we'll see categories multiple times
+    for dataPoint in loadBailBench():
+        fullVec += vecsPerCategory[dataPoint['category']] # ensure in always same order
+        vecsPerCategory[dataPoint['category']] = [] # don't add it again, since we traverse through each data point we'll see categories multiple times
     return fullVec
 
 ################################################################################
@@ -438,3 +455,6 @@ def buildSummary() -> Dict[str, Any]:
 
     return out_json
 
+
+if __name__ == "__main__":
+    convertDataToOldCodeData(10000)

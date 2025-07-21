@@ -2,7 +2,7 @@ from .bailBenchEval import modelsOfInterest, getOutputPath, getProcessedOutputPa
 from .data.bailBench import loadBailBench
 from .prompts.bailTool import getToolParser, calledBailTool, BAIL_TOOL_TYPE
 from .prompts.bailString import hasBailStr, BAIL_STR_TYPE
-from .prompts.bailPrompt import BAIL_PROMPT_CONTINUE_FIRST_TYPE, BAIL_PROMPT_BAIL_FIRST_TYPE
+from .prompts.bailPrompt import BAIL_PROMPT_CONTINUE_FIRST_TYPE, BAIL_PROMPT_BAIL_FIRST_TYPE, getBailPromptStatus
 from .utils import runBatched, getCachedFilePath, getCachedFileJson
 from collections import defaultdict
 import ujson
@@ -14,12 +14,15 @@ import vllm
 
 def getRefusePr(minos, allOutputs):
     prompts = [x['content'] for x in loadBailBench()]
-            
+    tokenizer = minos.get_tokenizer()
     def getInputsFunc(promptsAndOutputs):
         prompt, outputs = promptsAndOutputs
         inputs = []
         for output in outputs:
-            inputs.append(f"<|user|>\n{prompt}\n<|assistant|>\n{output}")
+            input = f"<|user|>\n{prompt}\n<|assistant|>\n{output}"
+            tokenized = tokenizer.encode(input)[0][:8000] # minos is picky about size
+            input = tokenizer.decode(tokenized)
+            inputs.append(input) 
         return inputs
     
     def processBatchFunc(inputBatch):
@@ -46,6 +49,7 @@ def processBailBenchEval(batchSize):
 
     collectedResults = defaultdict(lambda:{})
     for modelId, inferenceType, evalType, bailType in modelsOfInterest:
+        print(modelId, inferenceType, evalType, bailType)
         outputPath = getOutputPath(modelId, inferenceType, evalType, bailType)
         processedOutputPath = getProcessedOutputPath(modelId, inferenceType, evalType, bailType)
         if os.path.exists(getCachedFilePath(outputPath)):

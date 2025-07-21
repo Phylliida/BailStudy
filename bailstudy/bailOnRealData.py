@@ -77,7 +77,7 @@ def runBailOnRealData():
     maxGenerationTokens = 2000
     maxInputTokens = 8000
     seed = 27
-    batchSize = 1000
+    batchSize = 500
     tensorizeModels = True
 
     for modelStr in models:

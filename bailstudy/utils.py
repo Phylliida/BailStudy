@@ -59,7 +59,9 @@ def getCachedFileJson(fileName, lambdaIfNotExist):
         if os.path.exists(cachedPath):
             with open(cachedPath, "r") as f:
                 return ujson.load(f)
-    except:
+    except KeyboardInterrupt:
+        raise
+    except Exception as err:
         traceback.print_exc()
         print("Failed to load cached data, regenerating...")
     try:

@@ -1,11 +1,12 @@
 from .bailTool import getOwnModelName
+from .bailPrompt import removeThinking
 
 BAIL_STR_TYPE = "bail str"
 
 TOOL_NAME = "switchconversation_tool"
 
 def hasBailStr(output):
-    return "SWITCHCONVERSATION" in output
+    return "SWITCHCONVERSATION" in removeThinking(output).upper() # don't be case sensitive, ignore str in thinking
 
 def getBailString(modelStr):
     modelName = getOwnModelName(modelStr)
