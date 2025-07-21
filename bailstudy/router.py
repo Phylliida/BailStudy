@@ -16,14 +16,14 @@ from safetytooling.data_models import LLMResponse
 def getRouter(routerType, modelId, tensorizeModels: bool = False) -> safetytooling.apis.InferenceAPI:
     # get env keys
     safetytooling.utils.utils.setup_environment()
-    openrouter_api_key = os.environ['OPENROUTER_API_KEY']
-    anthropic_api_key = os.environ['ANTHROPIC_API_KEY']
-    openai_api_key = os.environ["OPENAI_API_KEY"]
     if routerType == "anthropic":
+        anthropic_api_key = os.environ['ANTHROPIC_API_KEY']
         router = safetytooling.safetytooling.apis.inference.anthropic.AnthropicChatModel(num_threads=50, prompt_history_dir=None, anthropic_api_key=anthropic_api_key)
     elif routerType == "openai":
+        openai_api_key = os.environ["OPENAI_API_KEY"]
         router = safetytooling.apis.InferenceAPI(cache_dir=None, openai_api_key=openai_api_key)
     elif routerType == "openrouter":
+        openrouter_api_key = os.environ['OPENROUTER_API_KEY']
         router = safetytooling.apis.InferenceAPI(cache_dir=None, openai_base_url="https://openrouter.ai/api/v1", openai_api_key=openrouter_api_key)
     elif routerType == "vllm":
         router = vllm.LLM(modelId) if not tensorizeModels else loadTensorizedModel(modelId, getTensorizedModelDir())

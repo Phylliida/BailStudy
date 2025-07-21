@@ -34,7 +34,7 @@ def getEngineArgs(
         revision = None,
         tokenizer_revision = None,
         seed = None,
-        gpu_memory_utilization: float = 0.55,
+        gpu_memory_utilization: float = 0.9,
         swap_space: float = 4,
         cpu_offload_gb: float = 0,
         enforce_eager: bool = False,

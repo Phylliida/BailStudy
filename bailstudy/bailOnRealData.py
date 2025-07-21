@@ -78,7 +78,7 @@ def runBailOnRealData():
     maxInputTokens = 8000
     seed = 27
     batchSize = 500
-    tensorizeModels = True
+    tensorizeModels = True # takes up too much memory with GLM
 
     for modelStr in models:
         if tensorizeModels and not isModelTensorized(modelStr, getTensorizedModelDir()):
@@ -89,7 +89,7 @@ def runBailOnRealData():
         for dataName, dataFunc in dataFuncs:
             def generateModelRolloutsFunc():
                 print("Running rollout on model " + modelStr + " on data " + dataName)
-                llm = vllm.LLM(modelStr) if not tensorizeModels else loadTensorizedModel(modelStr, getTensorizedModelDir())
+                llm = vllm.LLM(modelStr,  max_model_len=maxGenerationTokens+maxInputTokens) if not tensorizeModels else loadTensorizedModel(modelStr, getTensorizedModelDir(),  max_model_len=maxGenerationTokens+maxInputTokens)
                 data = dataFunc()
                 rollouts = getRollouts(llm=llm,
                                    conversations=data,
