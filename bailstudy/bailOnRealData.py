@@ -1,29 +1,16 @@
 from typing import List, Dict, Tuple
 import vllm
 import copy
+from .bailBenchEval import ROLLOUT_TYPE, BAIL_PROMPT_BAIL_FIRST_TYPE, BAIL_PROMPT_CONTINUE_FIRST_TYPE, BAIL_TOOL_TYPE, BAIL_STR_TYPE, lookupEvalInfo
 from .utils import getCachedFileJson, runBatched, FinishedException, doesCachedFileJsonExistOrInProgress
 from .data.shareGPT import loadShareGPT
 from .data.wildchat import loadWildchat
 from .prompts.bailTool import getBailTool, getToolParser, calledBailTool
 from .tensorizeModels import tensorizeModel, loadTensorizedModel, isModelTensorized, getTensorizedModelDir
+from .router import getParams, getRouter
 
-def getTurnPrompts(tokenizer, conversation, maxInputTokens: int = 20000, tools=None):
-    turnPrompts = []
-    prevConvEnd = 0
-    for turnI, turn in enumerate(conversation):
-        if turn['role'] == 'user':
-            conversationSoFar = conversation[:turnI+1]
-            messages = conversationSoFar
-            inputs = tokenizer.apply_chat_template(messages, tokenize=True, return_dict=True, return_tensors="pt", add_generation_prompt=True, tools=tools)
-            if len(inputs['input_ids'][0]) <= maxInputTokens: # trim to only max input tokens (we could start trimming front of context, but, meh this is underestimate which is ok)
-                prompt = inputs['input_ids'][0].tolist() # vllm expects a simple list, not a tensor
-                turnPrompts.append((turnI, prompt))
-    return turnPrompts
 
-def getRollouts(llm, conversations: List[List[Dict[str, str]]], maxGenerationTokens: int = 2000, maxInputTokens: int = 20000, batchSize: int = 1000, llmInferenceArgs: Dict = None, tools: List[Dict] = None, seed: int = 27):
-    if llmInferenceArgs is None:
-        llmInferenceArgs = {}
-    tokenizer = llm.get_tokenizer()
+def getRollouts(router, conversations: List[List[Dict[str, str]]], maxInputTokens : int, tokenizeParams : Dict, inferenceParams : Dict, batchSize: int = 1000, seed: int = 27):
     def getInputsFunc(conversationI: int):
         curUserContent = None
         conversation = []
@@ -35,14 +22,20 @@ def getRollouts(llm, conversations: List[List[Dict[str, str]]], maxGenerationTok
                 curUserContent = None
             elif turn["role"] == "user":
                 curUserContent = turn['content']
-        return [vllm.TokensPrompt(prompt_token_ids=promptTokens) for (turnI, promptTokens) in getTurnPrompts(tokenizer, conversation, maxInputTokens=maxInputTokens, tools=tools)]
+        resultPrompts = []
+        for turnI, turn in enumerate(conversation):
+            if turn['role'] == 'user':
+                conversationSoFar = conversation[:turnI+1]
+                # this also does prefixing and adding to system prompt and tools and etc.
+                tokens = tokenizeFunc(conversationsSoFar, **tokenizeParams)
+                if tokens.size()[0] <= maxInputTokens:
+                    resultPrompts.append(vllm.TokensPrompt(prompt_token_ids=tokens))
+        return resultPrompts
     
-    getBailToolTokenArgs = copy.deepcopy(llmInferenceArgs)
-    getBailToolTokenArgs["max_tokens"] = maxGenerationTokens
     def processBatchFunc(batchOfPrompts: List[str]) -> List[str]:
         nonlocal seed
         seed += 1
-        samplingParams = vllm.SamplingParams(seed=seed, **getBailToolTokenArgs)
+        samplingParams = vllm.SamplingParams(seed=seed, **inferenceParams)
         modelOutputs = llm.generate(batchOfPrompts, sampling_params=samplingParams, use_tqdm=False)
         return [modelOutput.outputs[0].text for modelOutput in modelOutputs]
 
@@ -58,14 +51,26 @@ def getRollouts(llm, conversations: List[List[Dict[str, str]]], maxGenerationTok
 
 
 
+modelsToRun = [
+    ("Qwen/Qwen2.5-7B-Instruct", "vllm", "", ROLLOUT_TYPE),
+    ("Qwen/Qwen2.5-7B-Instruct", "vllm", "", BAIL_STR_TYPE),
+    ("Qwen/Qwen2.5-7B-Instruct", "vllm", "", BAIL_TOOL_TYPE),
+    
+    ("THUDM/GLM-4-32B-0414", "vllm", "", ROLLOUT_TYPE),
+    ("THUDM/GLM-4-32B-0414", "vllm", "", BAIL_STR_TYPE),
+    ("THUDM/GLM-4-32B-0414", "vllm", "", BAIL_TOOL_TYPE),
+
+    ("google/gemma-2-2b-it", "vllm", "", ROLLOUT_TYPE),
+    ("google/gemma-2-2b-it", "vllm", "", BAIL_STR_TYPE),
+    # it doesn't know how to tool call
+    #("google/gemma-2-2b-it", "vllm", "", BAIL_TOOL_TYPE),
+]
+
+
 def runBailOnRealData():
     # Qwen 3 uses hermes parser
     # see https://github.com/vllm-project/vllm/blob/main/vllm/entrypoints/openai/tool_parsers/hermes_tool_parser.py#L64
      # Qwen 3 uses hermes parser, see docs
-    models = [
-        "Qwen/Qwen2.5-7B-Instruct",
-        "THUDM/GLM-4-32B-0414",
-    ]
 
     dataFuncs = [
         ("wildchat", loadWildchat),
@@ -78,25 +83,25 @@ def runBailOnRealData():
     maxInputTokens = 8000
     seed = 27
     batchSize = 500
-    tensorizeModels = True # takes up too much memory with GLM
+    tensorizeModels = False # takes up too much memory with GLM
 
-    for modelStr in models:
-        if tensorizeModels and not isModelTensorized(modelStr, getTensorizedModelDir()):
-            tensorizeModel(modelStr, getTensorizedModelDir())
-            return # tensorization requires reload to cleanup
-        tools = [getBailTool(modelStr)]
-        toolParser = getToolParser(modelStr)
+    for modelId, inferenceType, evalType, bailType in modelsToRun:
+        toolParser = getToolParser(modelId)
         for dataName, dataFunc in dataFuncs:
             def generateModelRolloutsFunc():
-                print("Running rollout on model " + modelStr + " on data " + dataName)
-                llm = vllm.LLM(modelStr,  max_model_len=maxGenerationTokens+maxInputTokens) if not tensorizeModels else loadTensorizedModel(modelStr, getTensorizedModelDir(),  max_model_len=maxGenerationTokens+maxInputTokens)
-                data = dataFunc()
+                router = getRouter(modelId, inferenceType, tensorizeModels=tensorizeModels)
+                tokenizeParams, inferenceParams = getInferenceParams(modelId, inferenceType, evalInfo, maxGenerationTokens)
+                print(f"Running rollout on model {modelId} {inferenceType} {evalType} {bailType} on data {dataName}")
+                print(f"Tokenize params")
+                print(tokenizeParams)
+                print(f"Inference params")
+                print(inferenceParams)
+                data = dataFunc()[:1000]
                 rollouts = getRollouts(llm=llm,
                                    conversations=data,
-                                   maxGenerationTokens=maxGenerationTokens,
                                    maxInputTokens=maxInputTokens,
-                                   llmInferenceArgs=llmInferenceArgs,
-                                   tools=tools,
+                                   tokenizeParams=tokenizeParams,
+                                   inferenceParams=inferenceParams,
                                    seed=seed,
                                    batchSize=batchSize)
                 bailedI = []
@@ -107,8 +112,8 @@ def runBailOnRealData():
                             bailedI.append(i)
                             break # we have a bail for this one, go to next one
                 return [rollouts, bailedI]
-            modelDataStr = modelStr.replace("/", "_") + dataName
-            cachedRolloutPath = f"bailOnRealData/rollouts/{modelDataStr}.json"
+            modelDataStr = modelId.replace("/", "_") + dataName
+            cachedRolloutPath = f"bailOnRealData/rollouts/{modelDataStr}-{evalType}-{bailType}.json"
             if doesCachedFileJsonExistOrInProgress(cachedRolloutPath):
                 continue # already in progress or done, move onto next one
             else:

@@ -4,7 +4,7 @@ from .prompts.bailTool import getBailTool, BAIL_TOOL_TYPE
 from .prompts.bailPrompt import bailFirstPrompt, continueFirstPrompt, BAIL_PROMPT_CONTINUE_FIRST_TYPE, BAIL_PROMPT_BAIL_FIRST_TYPE
 from .data.bailBench import loadBailBench
 from .utils import runBatched, doesCachedFileJsonExistOrInProgress, getCachedFileJson, FinishedException, messagesToSafetyToolingMessages, isCachedFileInProgress, doesCachedFileJsonExist
-from .router import getRouter
+from .router import getRouter, getParams
 from .tensorizeModels import tensorizeModel, isModelTensorized, getTensorizedModelDir
 
 import asyncio
@@ -131,7 +131,8 @@ evalTypes = [
 for evalType in evalTypes:
     for bailType in bailTypes:
         modelsOfInterest.append(("Qwen/Qwen2.5-7B-Instruct", "vllm", evalType, bailType))
-        modelsOfInterest.append(("Qwen/Qwen2.5-7B-Instruct", "vllm", evalType + "Q3", bailType))
+        #modelsOfInterest.append(("Qwen/Qwen2.5-7B-Instruct", "vllm", evalType + "Q3", bailType))
+        modelsOfInterest.append(("Qwen/Qwen3-8B", "vllm", evalType + "Q3", bailType))
 
 def getProcessedOutputPath(modelId, inferenceType, evalType, bailType):
     return f"bailBenchEvalProcessed/{modelId.replace('/', '_')}/{evalType}{bailType}.json"
@@ -184,46 +185,28 @@ def tryAll(nRolloutsPerPrompt, batchSize, maxInferenceTokens=1000, tensorizeMode
             return
     raise FinishedException()
 
-def getBailBenchRollouts(nRolloutsPerPrompt, batchSize, modelId, inferenceType, evalInfo, maxInferenceTokens=1000, tensorizeModels=False):
-    router = getRouter(inferenceType, modelId, tensorizeModels=tensorizeModels)
-  
-    if inferenceType in ["openrouter", 'openai']:
-        inferenceParams = {
-            "max_tokens": maxInferenceTokens,
-            "force_provider": "openai",
-            "print_prompt_and_response": False,
-        }
-    elif inferenceType == "anthropic":
-        inferenceParams = {
-            "max_tokens": maxInferenceTokens,
-            "max_attempts": 100,
-            "print_prompt_and_response": False,
-        }
-    elif inferenceType == "vllm":
-        # the stop are for aion-labs_Aion-RP-Llama-3.1-8B
-        inferenceParams = {"max_tokens": maxInferenceTokens, "stop": ["__USER__", "__ASSISTANT__"]}
-    else:
-        raise ValueError(f"Unknown inference type {inferenceType}")
-    
-    inferenceParams['tools'] = evalInfo['tools']
-    inferenceParams['appendToSystemPrompt'] = evalInfo['appendToSystemPrompt']
 
+
+def getBailBenchRollouts(nRolloutsPerPrompt, batchSize, modelId, inferenceType, evalInfo, maxInferenceTokens=1000, tensorizeModels=False):
+    router = getRouter(modelId, inferenceType, tensorizeModels=tensorizeModels)
+    tokenizeParams, inferenceParams = getParams(modelId, inferenceType, evalInfo, maxInferenceTokens)
+   
     prompts = [x['content'] for x in loadBailBench()]
-    prefixMessages = [] if evalInfo['prefixMessages'] is None else messagesToSafetyToolingMessages(evalInfo['prefixMessages'])
+
     def getInputsFunc(promptI):
         # bail prompt adds prefix from previous rollout
         if evalInfo['addBailPrompt'] is not None:
-            return [Prompt(messages= prefixMessages + [
+            return [Prompt(messages=[
                 ChatMessage(content=prompts[promptI], role=MessageRole.user),
                 ChatMessage(content=evalInfo['rollout'][promptI][rolloutJ], role=MessageRole.assistant),
                 ChatMessage(content=evalInfo['addBailPrompt'], role=MessageRole.user),
             ]) for rolloutJ in range(nRolloutsPerPrompt)]
         # otherwise, just simple stuff
         else:
-            return [Prompt(messages= prefixMessages + [ChatMessage(content=prompts[promptI], role=MessageRole.user)]) for _ in range(nRolloutsPerPrompt)]
+            return [Prompt(messages=[ChatMessage(content=prompts[promptI], role=MessageRole.user)]) for _ in range(nRolloutsPerPrompt)]
 
     def processBatchFunc(inputBatch):
-        return asyncio.run(router.processPrompts(inputBatch, **inferenceParams))
+        return asyncio.run(router.processPrompts(inputBatch, tokenizeParams, **inferenceParams))
 
     def processOutputFunc(prompt, modelInputs, outputs):
         return [output[0].completion for output in outputs]

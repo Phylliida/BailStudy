@@ -11,52 +11,77 @@ from jinja2 import Environment, nodes
 from jinja2.visitor import NodeVisitor
 from safetytooling import apis, utils
 from safetytooling.apis import inference
-from safetytooling.data_models import LLMResponse
+from safetytooling.data_models import LLMResponse, Prompt
 
-def getRouter(routerType, modelId, tensorizeModels: bool = False) -> safetytooling.apis.InferenceAPI:
+def getRouter(modelId, inferenceType, tensorizeModels: bool = False) -> safetytooling.apis.InferenceAPI:
     # get env keys
     safetytooling.utils.utils.setup_environment()
-    if routerType == "anthropic":
+    if inferenceType == "anthropic":
         anthropic_api_key = os.environ['ANTHROPIC_API_KEY']
         router = safetytooling.safetytooling.apis.inference.anthropic.AnthropicChatModel(num_threads=50, prompt_history_dir=None, anthropic_api_key=anthropic_api_key)
-    elif routerType == "openai":
+    elif inferenceType == "openai":
         openai_api_key = os.environ["OPENAI_API_KEY"]
         router = safetytooling.apis.InferenceAPI(cache_dir=None, openai_api_key=openai_api_key)
-    elif routerType == "openrouter":
+    elif inferenceType == "openrouter":
         openrouter_api_key = os.environ['OPENROUTER_API_KEY']
         router = safetytooling.apis.InferenceAPI(cache_dir=None, openai_base_url="https://openrouter.ai/api/v1", openai_api_key=openrouter_api_key)
-    elif routerType == "vllm":
+    elif inferenceType == "vllm":
         router = vllm.LLM(modelId) if not tensorizeModels else loadTensorizedModel(modelId, getTensorizedModelDir())
     else:
-        raise ValueError("Unknown router type", routerType)
-    if routerType in ['openrouter', 'anthropic', 'openai']:
-        async def processPrompts(prompts, appendToSystemPrompt=None, **inference_args):
+        raise ValueError("Unknown router type", inferenceType)
+    if inferenceType in ['openrouter', 'anthropic', 'openai']:
+        async def processPrompts(prompts, appendToSystemPrompt=None, prefixMessages=[], **inference_args):
             # do parallel tasks, faster for remote inference
-            tasks = [router(model_id=router.modelId, prompt=prompt, system=appendToSystemPrompt, **inferenceArgs) for prompt in prompts]
+            tasks = [router(model_id=router.modelId, prompt=Prompt(messages=prefixMessages + prompt.messages),
+                    system=appendToSystemPrompt,
+                    **inferenceArgs) for prompt in prompts]
             return asyncio.gather(*tasks)
         router.processPrompts = processPrompts
     else:
+
+        def tokenize(messages, appendToSystemPrompt=None, tools=None, prefixMessages=[]):
+            messagesParsed = safetyToolingMessagesToMessages(prefixMessages + messages)
+            if appendToSystemPrompt is not None:
+                messagesParsed = [{"role": "system", "content": (getSystemPrompt(tokenizer) + "\n" + appendToSystemPrompt).strip()}] + messagesParsed
+            inputs = tokenizer.apply_chat_template(messagesParsed, add_generation_prompt=True, tokenize=True, return_dict=True, return_tensors="pt", tools=tools)
+            return inputs['input_ids'][0]
+
         tokenizer = router.get_tokenizer()
-        async def processPrompts(prompts, appendToSystemPrompt=None, **inferenceArgs):
+        async def processPrompts(prompts, tokenizeArgs, **inferenceArgs):
             # for local inference, we want to process whole batch, not seperate tasks, this way is faster
-            def safetyToolingMessagesToTokens(messages):
-                messagesParsed = safetyToolingMessagesToMessages(messages)
-                if appendToSystemPrompt is not None:
-                    messagesParsed = [{"role": "system", "content": (getSystemPrompt(tokenizer) + "\n" + appendToSystemPrompt).strip()}] + messagesParsed
-                inputs = tokenizer.apply_chat_template(messagesParsed, add_generation_prompt=True, tokenize=True, return_dict=True, return_tensors="pt", tools=inferenceArgs['tools'])
-                prompt = vllm.TokensPrompt(prompt_token_ids=inputs['input_ids'][0].tolist())
-                return prompt
-            inferenceArgsCopy = copy.deepcopy(inferenceArgs)
-            # we use tools above for tokenization, that's all we need, don't pass them in for inference
-            if "tools" in inferenceArgsCopy: del inferenceArgsCopy['tools']
-            prompts = [safetyToolingMessagesToTokens(prompt.messages) for prompt in prompts]
-            generations = router.generate(prompts, sampling_params=vllm.SamplingParams(**inferenceArgsCopy), use_tqdm=False)
+            prompts = [vllm.TokensPrompt(prompt_token_ids=tokenize(prompt.messages, **tokenizeArgs).tolist()) for prompt in prompts]
+            generations = router.generate(prompts, sampling_params=vllm.SamplingParams(**inferenceArgs), use_tqdm=False)
             # reformat outputs to look like other outputs
             # max tokens is fine for now, we could do better later
             return [[LLMResponse(model_id=modelId, completion=output.text, stop_reason="max_tokens") for output in generation.outputs] for generation in generations]
+        router.tokenize = tokenize
         router.processPrompts = processPrompts
     router.modelId = modelId
     return router
+
+
+def getParams(modelId, inferenceType, evalInfo, maxInferenceTokens):
+    if inferenceType in ["openrouter", 'openai']:
+        inferenceParams = {
+            "max_tokens": maxInferenceTokens,
+            "force_provider": "openai",
+            "print_prompt_and_response": False,
+        }
+    elif inferenceType == "anthropic":
+        inferenceParams = {
+            "max_tokens": maxInferenceTokens,
+            "max_attempts": 100,
+            "print_prompt_and_response": False,
+        }
+    elif inferenceType == "vllm":
+        # the stop are for aion-labs_Aion-RP-Llama-3.1-8B
+        inferenceParams = {"max_tokens": maxInferenceTokens, "stop": ["__USER__", "__ASSISTANT__"]}
+    else:
+        raise ValueError(f"Unknown inference type {inferenceType}")
+    tokenizeParams['tools'] = evalInfo['tools']
+    tokenizeParams['appendToSystemPrompt'] = evalInfo['appendToSystemPrompt']
+    tokenizeParams['prefixMessages'] = [] if evalInfo['prefixMessages'] is None else messagesToSafetyToolingMessages(evalInfo['prefixMessages'])
+    return tokenizeParams, inferenceParams
 
 
 class DefaultSystemPromptFinder(NodeVisitor):

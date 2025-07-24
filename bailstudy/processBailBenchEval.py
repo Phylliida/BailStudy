@@ -20,7 +20,7 @@ def getRefusePr(minos, allOutputs):
         inputs = []
         for output in outputs:
             input = f"<|user|>\n{prompt}\n<|assistant|>\n{output}"
-            tokenized = tokenizer.encode(input)[0][:8000] # minos is picky about size
+            tokenized = tokenizer.encode(input, return_tensors="pt")[0][:8000] # minos is picky about size
             input = tokenizer.decode(tokenized)
             inputs.append(input) 
         return inputs
