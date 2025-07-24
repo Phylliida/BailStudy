@@ -3,7 +3,7 @@ from .prompts.bailString import getBailString, BAIL_STR_TYPE
 from .prompts.bailTool import getBailTool, BAIL_TOOL_TYPE
 from .prompts.bailPrompt import bailFirstPrompt, continueFirstPrompt, BAIL_PROMPT_CONTINUE_FIRST_TYPE, BAIL_PROMPT_BAIL_FIRST_TYPE
 from .data.bailBench import loadBailBench
-from .utils import runBatched, doesCachedFileJsonExistOrInProgress, getCachedFileJson, FinishedException, isCachedFileInProgress, doesCachedFileJsonExist
+from .utils import runBatched, doesCachedFileJsonExistOrInProgress, getCachedFileJson, FinishedException, messagesToSafetyToolingMessages, isCachedFileInProgress, doesCachedFileJsonExist
 from .router import getRouter, getParams
 from .tensorizeModels import tensorizeModel, isModelTensorized, getTensorizedModelDir
 
