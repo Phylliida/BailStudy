@@ -3,7 +3,7 @@ from .prompts.bailString import getBailString, BAIL_STR_TYPE
 from .prompts.bailTool import getBailTool, BAIL_TOOL_TYPE
 from .prompts.bailPrompt import bailFirstPrompt, continueFirstPrompt, BAIL_PROMPT_CONTINUE_FIRST_TYPE, BAIL_PROMPT_BAIL_FIRST_TYPE
 from .data.bailBench import loadBailBench
-from .utils import runBatched, doesCachedFileJsonExistOrInProgress, getCachedFileJson, FinishedException, messagesToSafetyToolingMessages, isCachedFileInProgress, doesCachedFileJsonExist
+from .utils import runBatched, doesCachedFileJsonExistOrInProgress, getCachedFileJson, FinishedException, isCachedFileInProgress, doesCachedFileJsonExist
 from .router import getRouter, getParams
 from .tensorizeModels import tensorizeModel, isModelTensorized, getTensorizedModelDir
 
@@ -13,7 +13,7 @@ from safetytooling.data_models import Prompt, ChatMessage, MessageRole, LLMRespo
 ROLLOUT_TYPE = "rollout"
 
 # This is the stuff that changes for different kinds of eval
-def lookupEvalInfo(modelName, inferenceType, evalType, bailType):
+def getEvalInfo(modelName, inferenceType, evalType, bailType):
     # default values
     evalInfo = {
         "tools": None,
@@ -143,7 +143,7 @@ def getOutputPath(modelId, inferenceType, evalType, bailType):
 
 def tryAll(nRolloutsPerPrompt, batchSize, maxInferenceTokens=1000, tensorizeModels=True):
     for modelId, inferenceType, evalType, bailType in modelsOfInterest:
-        evalInfo = lookupEvalInfo(modelId, inferenceType, evalType, bailType)
+        evalInfo = getEvalInfo(modelId, inferenceType, evalType, bailType)
 
         outputPath = getOutputPath(modelId, inferenceType, evalType, bailType)
 

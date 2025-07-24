@@ -1,8 +1,8 @@
 from typing import List, Dict, Tuple
 import vllm
 import copy
-from .bailBenchEval import ROLLOUT_TYPE, BAIL_PROMPT_BAIL_FIRST_TYPE, BAIL_PROMPT_CONTINUE_FIRST_TYPE, BAIL_TOOL_TYPE, BAIL_STR_TYPE, lookupEvalInfo
-from .utils import getCachedFileJson, runBatched, FinishedException, doesCachedFileJsonExistOrInProgress
+from .bailBenchEval import ROLLOUT_TYPE, BAIL_PROMPT_BAIL_FIRST_TYPE, BAIL_PROMPT_CONTINUE_FIRST_TYPE, BAIL_TOOL_TYPE, BAIL_STR_TYPE, getEvalInfo
+from .utils import getCachedFileJson, runBatched, FinishedException, doesCachedFileJsonExistOrInProgress, messagesToSafetyToolingMessages
 from .data.shareGPT import loadShareGPT
 from .data.wildchat import loadWildchat
 from .prompts.bailTool import getBailTool, getToolParser, calledBailTool
@@ -27,16 +27,16 @@ def getRollouts(router, conversations: List[List[Dict[str, str]]], maxInputToken
             if turn['role'] == 'user':
                 conversationSoFar = conversation[:turnI+1]
                 # this also does prefixing and adding to system prompt and tools and etc.
-                tokens = tokenizeFunc(conversationsSoFar, **tokenizeParams)
+                tokens = router.tokenize(messagesToSafetyToolingMessages(conversationSoFar), **tokenizeParams)
                 if tokens.size()[0] <= maxInputTokens:
-                    resultPrompts.append(vllm.TokensPrompt(prompt_token_ids=tokens))
+                    resultPrompts.append(vllm.TokensPrompt(prompt_token_ids=tokens.tolist()))
         return resultPrompts
     
     def processBatchFunc(batchOfPrompts: List[str]) -> List[str]:
         nonlocal seed
         seed += 1
         samplingParams = vllm.SamplingParams(seed=seed, **inferenceParams)
-        modelOutputs = llm.generate(batchOfPrompts, sampling_params=samplingParams, use_tqdm=False)
+        modelOutputs = router.generate(batchOfPrompts, sampling_params=samplingParams, use_tqdm=False)
         return [modelOutput.outputs[0].text for modelOutput in modelOutputs]
 
     def processOutputFunc(conversationI: List[Dict[str, str]], turnPrompts: List[str], turnOutputs: List[str]) -> Tuple[int, List[Tuple[float, float]]]:
@@ -90,28 +90,22 @@ def runBailOnRealData():
         for dataName, dataFunc in dataFuncs:
             def generateModelRolloutsFunc():
                 router = getRouter(modelId, inferenceType, tensorizeModels=tensorizeModels)
-                tokenizeParams, inferenceParams = getInferenceParams(modelId, inferenceType, evalInfo, maxGenerationTokens)
+                evalInfo = getEvalInfo(modelId, inferenceType, evalType, bailType)
+                tokenizeParams, inferenceParams = getParams(modelId, inferenceType, evalInfo, maxGenerationTokens)
                 print(f"Running rollout on model {modelId} {inferenceType} {evalType} {bailType} on data {dataName}")
                 print(f"Tokenize params")
                 print(tokenizeParams)
                 print(f"Inference params")
                 print(inferenceParams)
                 data = dataFunc()[:1000]
-                rollouts = getRollouts(llm=llm,
+                rollouts = getRollouts(router=router,
                                    conversations=data,
                                    maxInputTokens=maxInputTokens,
                                    tokenizeParams=tokenizeParams,
                                    inferenceParams=inferenceParams,
                                    seed=seed,
                                    batchSize=batchSize)
-                bailedI = []
-                for i, turnOutputs in enumerate(rollouts):
-                    for output in turnOutputs:
-                        # this will print some errors, that's fine that's normal for tool call parsing
-                        if calledBailTool(output, toolParser):
-                            bailedI.append(i)
-                            break # we have a bail for this one, go to next one
-                return [rollouts, bailedI]
+                return rollouts
             modelDataStr = modelId.replace("/", "_") + dataName
             cachedRolloutPath = f"bailOnRealData/rollouts/{modelDataStr}-{evalType}-{bailType}.json"
             if doesCachedFileJsonExistOrInProgress(cachedRolloutPath):

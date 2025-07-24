@@ -1,5 +1,5 @@
 from .tensorizeModels import loadTensorizedModel, getTensorizedModelDir
-from .utils import safetyToolingMessagesToMessages
+from .utils import safetyToolingMessagesToMessages, messagesToSafetyToolingMessages
 
 import os
 import vllm
@@ -78,6 +78,7 @@ def getParams(modelId, inferenceType, evalInfo, maxInferenceTokens):
         inferenceParams = {"max_tokens": maxInferenceTokens, "stop": ["__USER__", "__ASSISTANT__"]}
     else:
         raise ValueError(f"Unknown inference type {inferenceType}")
+    tokenizeParams = {}
     tokenizeParams['tools'] = evalInfo['tools']
     tokenizeParams['appendToSystemPrompt'] = evalInfo['appendToSystemPrompt']
     tokenizeParams['prefixMessages'] = [] if evalInfo['prefixMessages'] is None else messagesToSafetyToolingMessages(evalInfo['prefixMessages'])
