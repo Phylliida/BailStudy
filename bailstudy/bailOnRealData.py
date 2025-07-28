@@ -61,7 +61,7 @@ modelsToRun = [
     ("THUDM/GLM-4-32B-0414", "vllm", "", BAIL_TOOL_TYPE),
 
     ("google/gemma-2-2b-it", "vllm", "", ROLLOUT_TYPE),
-    ("google/gemma-2-2b-it", "vllm", "", BAIL_STR_TYPE),
+    #("google/gemma-2-2b-it", "vllm", "", BAIL_STR_TYPE),
     # it doesn't know how to tool call
     #("google/gemma-2-2b-it", "vllm", "", BAIL_TOOL_TYPE),
 ]
@@ -86,7 +86,6 @@ def runBailOnRealData():
     tensorizeModels = False # takes up too much memory with GLM
 
     for modelId, inferenceType, evalType, bailType in modelsToRun:
-        toolParser = getToolParser(modelId)
         for dataName, dataFunc in dataFuncs:
             def generateModelRolloutsFunc():
                 router = getRouter(modelId, inferenceType, tensorizeModels=tensorizeModels)
@@ -97,7 +96,7 @@ def runBailOnRealData():
                 print(tokenizeParams)
                 print(f"Inference params")
                 print(inferenceParams)
-                data = dataFunc()[:1000]
+                data = dataFunc()
                 rollouts = getRollouts(router=router,
                                    conversations=data,
                                    maxInputTokens=maxInputTokens,
