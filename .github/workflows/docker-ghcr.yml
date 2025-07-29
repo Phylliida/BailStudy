@@ -37,5 +37,5 @@ jobs:
           file: ./docker/Dockerfile    # explicit path to the Dockerfile
           push: true
           tags: |
-            ghcr.io/Phylliida/bailstudy:latest
-            ghcr.io/Phylliida/bailstudy:${{ github.sha }}
+            ghcr.io/phylliida/bailstudy:latest
+            ghcr.io/phylliida/bailstudy:${{ github.sha }}
