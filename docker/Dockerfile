@@ -1,44 +1,38 @@
 # ────────────────────────────────────────────────────────────────
 # CUDA + Python base chosen to work on RunPod GPU nodes
 # ----------------------------------------------------------------
-FROM nvidia/cuda:12.2.0-runtime-ubuntu22.04
+FROM runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04
 
 LABEL maintainer="Danielle-Ensign <phylliida.dev@gmail.com>" \
       org.opencontainers.image.source="https://github.com/Phylliida/BailStudy"
 
-# ----------------------------------------------------------------
-# 1. OS dependencies
-# ----------------------------------------------------------------
-ENV DEBIAN_FRONTEND=noninteractive
-
+# modified from https://github.com/jplhughes/dotfiles/blob/master/runpod/johnh_dev.Dockerfile
+# Install SSH and other dependencies
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        python3 python3-pip python3-venv python3-dev \
-        curl ca-certificates git sudo bash tini && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
+    apt-get install -y openssh-server sudo less nano htop ncdu && \
+    mkdir /var/run/sshd
 
-# ----------------------------------------------------------------
-# 2. Create an unprivileged user with password-less sudo
-# ----------------------------------------------------------------
-ARG USER=app
-ARG UID=1000
-RUN useradd -m -s /bin/bash -u ${UID} ${USER} && \
-    echo "${USER} ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+# Create a directory for SSH keys
+RUN mkdir -p /root/.ssh && chmod 700 /root/.ssh
 
-USER ${USER}
-WORKDIR /home/${USER}
+# Update SSH configuration
+RUN echo "PermitRootLogin yes" >> /etc/ssh/sshd_config && \
+    echo "PasswordAuthentication no" >> /etc/ssh/sshd_config && \
+    echo "PubkeyAuthentication yes" >> /etc/ssh/sshd_config
 
-# ----------------------------------------------------------------
-# 3. Install Astral’s ultra-fast package manager `uv`
-#    (https://github.com/astral-sh/uv)
-# ----------------------------------------------------------------
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh -s -- --y
+# Add sudo stuff
+RUN su -c 'apt-get update && apt-get install -y sudo'
+RUN sudo apt-get install -y less nano htop ncdu nvtop lsof rsync btop jq
 
-ENV PATH="/home/${USER}/.cargo/bin:${PATH}"
+# Setup virtual environment
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# ----------------------------------------------------------------
-# 4. Install the BailStudy repo + any other Python deps
-# ----------------------------------------------------------------
-RUN uv pip install --upgrade pip && \
-    uv pip install "https://github.com/Phylliida/BailStudy.git"
+# Setup python with uv
+RUN source $HOME/.local/bin/env && \
+    uv python install 3.11 && \
+    uv venv
+
+RUN source $HOME/.local/bin/env && \
+    uv pip install --no-cache-dir ipykernel huggingface_hub https://github.com/Phylliida/BailStudy.git
+
 
