@@ -32,7 +32,7 @@ WORKDIR /home/${USER}
 # 3. Install Astral’s ultra-fast package manager `uv`
 #    (https://github.com/astral-sh/uv)
 # ----------------------------------------------------------------
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh -s -- --yes
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh -s -- --y
 
 ENV PATH="/home/${USER}/.cargo/bin:${PATH}"
 
