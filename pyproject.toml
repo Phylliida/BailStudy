@@ -19,6 +19,7 @@ dependencies = [
     "flashinfer-python",
     "pandas",
     "numpy",
+    "langchain",
     "torch",
     "ujson",
     "setuptools",

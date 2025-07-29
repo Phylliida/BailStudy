@@ -12,13 +12,14 @@ from jinja2.visitor import NodeVisitor
 from safetytooling import apis, utils
 from safetytooling.apis import inference
 from safetytooling.data_models import LLMResponse, Prompt
+import dotenv
 
 def getRouter(modelId, inferenceType, tensorizeModels: bool = False) -> safetytooling.apis.InferenceAPI:
     # get env keys
-    safetytooling.utils.utils.setup_environment()
+    dotenv.load_dotenv(override=True)
     if inferenceType == "anthropic":
         anthropic_api_key = os.environ['ANTHROPIC_API_KEY']
-        router = safetytooling.safetytooling.apis.inference.anthropic.AnthropicChatModel(num_threads=50, prompt_history_dir=None, anthropic_api_key=anthropic_api_key)
+        router = safetytooling.apis.inference.anthropic.AnthropicChatModel(num_threads=50, prompt_history_dir=None, anthropic_api_key=anthropic_api_key)
     elif inferenceType == "openai":
         openai_api_key = os.environ["OPENAI_API_KEY"]
         router = safetytooling.apis.InferenceAPI(cache_dir=None, openai_api_key=openai_api_key)
@@ -30,12 +31,13 @@ def getRouter(modelId, inferenceType, tensorizeModels: bool = False) -> safetyto
     else:
         raise ValueError("Unknown router type", inferenceType)
     if inferenceType in ['openrouter', 'anthropic', 'openai']:
-        async def processPrompts(prompts, appendToSystemPrompt=None, prefixMessages=[], **inference_args):
+        async def processPrompts(prompts, tokenizeArgs, **inferenceArgs):
             # do parallel tasks, faster for remote inference
-            tasks = [router(model_id=router.modelId, prompt=Prompt(messages=prefixMessages + prompt.messages),
-                    system=appendToSystemPrompt,
-                    **inferenceArgs) for prompt in prompts]
-            return asyncio.gather(*tasks)
+            args = dict(model_id=router.modelId, **inferenceArgs)
+            if not tokenizeArgs['appendToSystemPrompt'] is None:
+                args['system'] = tokenizeArgs['appendToSystemPrompt'] # doesn't support null or empty list so need to only add this if relevant
+            tasks = [router(prompt=Prompt(messages=tokenizeArgs['prefixMessages'] + prompt.messages), **args) for prompt in prompts]
+            return await asyncio.gather(*tasks)
         router.processPrompts = processPrompts
     else:
 

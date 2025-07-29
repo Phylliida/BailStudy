@@ -1,3 +1,4 @@
 cached/
 __pycache__/
 bailstudy.egg-info/
+.env

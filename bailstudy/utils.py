@@ -1,6 +1,6 @@
 import datetime
 import pytz
-from typing import Tuple, List, Dict, Callable, Any
+from typing import Tuple, List, Dict, Callable, Any, Iterable, AsyncIterable
 import itertools
 from collections import deque
 import pathlib
@@ -10,6 +10,7 @@ import traceback
 from huggingface_hub import hf_hub_download
 import math
 import safetytooling
+import inspect
 from safetytooling.data_models import ChatMessage, MessageRole
 
 ## Stuff for keypoller support on windows
@@ -50,6 +51,36 @@ def getCachedDir():
     d = pathlib.Path("./cached")
     d.mkdir(parents=True, exist_ok=True)
     return d
+
+async def getCachedFileJsonAsync(fileName, lambdaIfNotExist):
+    cachedInProgressPath = getCachedInProgressFilePath(fileName)
+    cachedPath = getCachedFilePath(fileName)
+    # make containing directory if not exist
+    pathlib.Path(os.path.dirname(cachedPath)).mkdir(parents=True, exist_ok=True)
+    try:
+        if os.path.exists(cachedPath):
+            with open(cachedPath, "r") as f:
+                return ujson.load(f)
+    except KeyboardInterrupt:
+        raise
+    except Exception as err:
+        traceback.print_exc()
+        print("Failed to load cached data, regenerating...")
+    try:
+        with open(cachedInProgressPath, "w") as f:
+            f.write("a")
+        
+        data = await lambdaIfNotExist()
+        with open(cachedPath, "w") as f:
+            ujson.dump(data, f)
+        return data
+    finally:
+        # clean up progress if failed, so other people can try it
+        # or if we finished, this cleans it up so we don't clutter
+        if os.path.exists(cachedInProgressPath):
+            os.remove(cachedInProgressPath)
+    
+
 def getCachedFileJson(fileName, lambdaIfNotExist):
     cachedInProgressPath = getCachedInProgressFilePath(fileName)
     cachedPath = getCachedFilePath(fileName)
@@ -341,6 +372,156 @@ def runBatchedIterator(inputs, n, getInputs, processBatch, processOutput, batchS
         for output in onDemandBatchedIter(inputs, runOnBatchedFunc):
             yield output
 
+
+async def maybeAwait(coroOrValue):
+    """Return value if plain object, otherwise await and return result."""
+    if inspect.isawaitable(coroOrValue):
+        return await coroOrValue
+    return coroOrValue
+
+async def callProcessBatch(processBatch: Callable[[List[Any]], Any],
+                              batch: List[Any]) -> List[Any]:
+    """
+    Call processBatch and always get the result **asynchronously**.
+    * If processBatch is async   -> await it.
+    * If processBatch is regular -> run it inside default ThreadPool so we
+                                     don't block the event‐loop.
+    """
+    if inspect.iscoroutinefunction(processBatch):
+        return await processBatch(batch)
+
+    loop = asyncio.get_running_loop()
+    # Run the blocking function in a worker thread
+    return await loop.run_in_executor(None, processBatch, batch)
+
+
+# -----------------------------------------------------------------------------#
+# Async versions of your two public helpers
+# -----------------------------------------------------------------------------#
+async def runBatchedIteratorAsync(
+    inputs            : Iterable[Any],
+    n                 : int,
+    getInputs         : Callable[[Any], Any],
+    processBatch      : Callable[[List[Any]], Any],
+    processOutput     : Callable[[Any, Any, Any], Any],
+    batchSize         : int,
+    verbose           : bool = True,
+    noCancel          : bool = False
+) -> AsyncIterable[Any]:
+    """
+    Async counterpart of runBatchedIterator.
+    Behaviour is identical, but `processBatch` may now be either sync **or**
+    async.  Results are yielded as soon as the corresponding batch finishes.
+    """
+    def getInputsIterator(inputs):
+        for inp in inputs:
+            yield getInputs(inp)
+
+    def getFlattenedIterator(inputsIter):
+        for unflattened in inputsIter:
+            yield flatten(unflattened)
+
+    async def getFlattenedOutputsIterator(flattenedIter, runOnBatchFunc):
+        curBatch : deque = deque()
+        batchEnd = 0
+        async for flattened in flattenedIter:
+            curBatch.extend(flattened)
+            while len(curBatch) >= batchSize:
+                batch     = [curBatch.popleft() for _ in range(batchSize)]
+                outputs   = await callProcessBatch(processBatch, batch)
+                batchEnd += batchSize
+                runOnBatchFunc(batchEnd)
+                yield outputs
+        if curBatch:
+            outputs   = await callProcessBatch(processBatch, list(curBatch))
+            batchEnd += len(curBatch)
+            runOnBatchFunc(batchEnd)
+            yield outputs
+
+    # Because an async generator has to be created from an async source,
+    # we wrap the sync iterators with asyncio.to_thread for laziness.
+    async def agenFromSyncIter(syncIter):
+        for item in syncIter:
+            yield item
+
+    inputsIter1, inputsIter2 = itertools.tee(getInputsIterator(inputs))
+    flattenedIter1, flattenedIter2 = itertools.tee(getFlattenedIterator(inputsIter1))
+
+    # Convert the *sync* flattenedIter1 into an *async* generator
+    async def flattenedAsyncGen():
+        for item in flattenedIter1:  # generator delegation
+            yield item
+    flattenedOutputsIter = getFlattenedOutputsIterator(flattenedAsyncGen(),
+                                                       runOnBatchFunc=lambda *_: None)
+
+    averageNPerN = 1
+    baselineN    = n
+
+    # progress printer + cancel support (same logic as original)
+    startTime = timestampMillis()
+    with KeyPoller(noCancel) as keypoller:
+
+        def onBatch(batchEnd):
+            nonlocal n
+            elapsed      = timestampMillis() - startTime
+            ms_per_item  = elapsed / float(batchEnd)
+            totalTimeEst = elapsed * n / float(batchEnd)
+            timeLeft     = totalTimeEst - elapsed
+            if verbose:
+                disp = secondsToDisplayStr(timeLeft / 1000.0)
+                done = getFutureDatetime(timeLeft / 1000.0).strftime('%I:%M:%S %p')
+                print(batchEnd, "/", n, f"{ms_per_item:.1f} ms/item  {disp}done at {done}")
+            key = keypoller.poll()
+            if key and str(key) == "c":
+                raise ValueError("stopped by user")
+
+        flattenedOutputsIter = getFlattenedOutputsIterator(flattenedAsyncGen(),
+                                                           runOnBatchFunc=onBatch)
+
+        curOutputs : deque = deque()
+        idx        = 0
+        async for input_, inputUnflattened, inputFlattened in agenFromSyncIter(
+                zip(inputs, inputsIter2, flattenedIter2)):
+            # progress estimation bookkeeping
+            averageNPerN = (averageNPerN * idx + len(inputFlattened)) / (idx + 1)
+            n   = math.ceil(baselineN * averageNPerN)
+            idx += 1
+
+            # fetch outputs until we have enough for this input
+            while len(curOutputs) < len(inputFlattened):
+                curOutputs.extend(await flattenedOutputsIter.__anext__())
+
+            outputsUnflattened = unflatten(
+                [curOutputs.popleft() for _ in range(len(inputFlattened))],
+                inputUnflattened
+            )
+            yield processOutput(input_, inputUnflattened, outputsUnflattened)
+
+
+async def runBatchedAsync(
+    inputs            : Iterable[Any],
+    getInputs         : Callable[[Any], Any],
+    processBatch      : Callable[[List[Any]], Any],
+    processOutput     : Callable[[Any, Any, Any], Any],
+    batchSize         : int,
+    verbose           : bool = True,
+    noCancel          : bool = False
+) -> List[Any]:
+    """
+    Async counterpart of runBatched. Returns *list* of results.
+    """
+    results = []
+    async for out in runBatchedIteratorAsync(
+            inputs       = inputs,
+            n            = len(inputs),
+            getInputs    = getInputs,
+            processBatch = processBatch,
+            processOutput= processOutput,
+            batchSize    = batchSize,
+            verbose      = verbose,
+            noCancel     = noCancel):
+        results.append(out)
+    return results
 
 def roleToSafetyToolingRole(role):
     if role == "user": return MessageRole.user

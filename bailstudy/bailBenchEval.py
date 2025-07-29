@@ -3,7 +3,7 @@ from .prompts.bailString import getBailString, BAIL_STR_TYPE
 from .prompts.bailTool import getBailTool, BAIL_TOOL_TYPE
 from .prompts.bailPrompt import bailFirstPrompt, continueFirstPrompt, BAIL_PROMPT_CONTINUE_FIRST_TYPE, BAIL_PROMPT_BAIL_FIRST_TYPE
 from .data.bailBench import loadBailBench
-from .utils import runBatched, doesCachedFileJsonExistOrInProgress, getCachedFileJson, FinishedException, messagesToSafetyToolingMessages, isCachedFileInProgress, doesCachedFileJsonExist
+from .utils import runBatched, doesCachedFileJsonExistOrInProgress, getCachedFileJson, FinishedException, messagesToSafetyToolingMessages, isCachedFileInProgress, doesCachedFileJsonExist, getCachedFileJsonAsync, runBatchedAsync
 from .router import getRouter, getParams
 from .tensorizeModels import tensorizeModel, isModelTensorized, getTensorizedModelDir
 
@@ -110,11 +110,21 @@ models = [
     ("mlabonne/Qwen3-8B-abliterated","vllm"),
 ]
 
+
 modelsOfInterest = []
 for modelStr, inferenceType in models:
     for bailType in bailTypes:
         modelsOfInterest.append((modelStr, inferenceType, "", bailType))
 
+
+modelsNoPrompt = [
+    ("claude-3-haiku-20240307", "anthropic")
+]
+bailTypesNoPrompt = [ROLLOUT_TYPE, BAIL_TOOL_TYPE, BAIL_STR_TYPE]
+modelsOfInterest = []
+for modelStr, inferenceType in modelsNoPrompt:
+    for bailType in bailTypesNoPrompt:
+        modelsOfInterest.append((modelStr, inferenceType, "", bailType))
 
 evalTypes = [
     "DAN",
@@ -141,7 +151,7 @@ def getOutputPath(modelId, inferenceType, evalType, bailType):
 
 
 
-def tryAll(nRolloutsPerPrompt, batchSize, maxInferenceTokens=1000, tensorizeModels=True):
+async def tryAll(nRolloutsPerPrompt, batchSize, maxInferenceTokens=1000, tensorizeModels=True):
     for modelId, inferenceType, evalType, bailType in modelsOfInterest:
         evalInfo = getEvalInfo(modelId, inferenceType, evalType, bailType)
 
@@ -155,6 +165,8 @@ def tryAll(nRolloutsPerPrompt, batchSize, maxInferenceTokens=1000, tensorizeMode
 
         if not doesCachedFileJsonExistOrInProgress(outputPath):
             print(f"Running rollout for {modelId} {inferenceType} {evalType} {bailType}")
+
+
             # need rollout data as part of bail prompt
             if evalInfo['addBailPrompt'] is not None:
                 rolloutPath = getOutputPath(modelId, inferenceType, evalType, ROLLOUT_TYPE)
@@ -164,30 +176,33 @@ def tryAll(nRolloutsPerPrompt, batchSize, maxInferenceTokens=1000, tensorizeMode
                     evalInfo['rollout'] = getCachedFileJson(rolloutPath, lambda: None)
                 else: # need to generate rollout first
                     rolloutEvalInfo = lookupEvalInfo(modelId, inferenceType, evalType, ROLLOUT_TYPE)
-                    rolloutData = getCachedFileJson(rolloutPath, lambda: getBailBenchRollouts(nRolloutsPerPrompt=nRolloutsPerPrompt,
-                                                                                              batchSize=batchSize,
-                                                                                              modelId=modelId,
-                                                                                              inferenceType=inferenceType,
-                                                                                              evalInfo=rolloutEvalInfo,
-                                                                                              maxInferenceTokens=maxInferenceTokens,
-                                                                                              tensorizeModels=tensorizeModels))
+                    async def getRollouts():
+                        return await getBailBenchRollouts(nRolloutsPerPrompt=nRolloutsPerPrompt,
+                                                            batchSize=batchSize,
+                                                            modelId=modelId,
+                                                            inferenceType=inferenceType,
+                                                            evalInfo=rolloutEvalInfo,
+                                                            maxInferenceTokens=maxInferenceTokens,
+                                                            tensorizeModels=tensorizeModels)
+                    await getCachedFileJsonAsync(rolloutPath, getRollouts)
                     return # need to reload
                 
-                    
-            getCachedFileJson(outputPath, lambda: getBailBenchRollouts(nRolloutsPerPrompt=nRolloutsPerPrompt,
-                                                                       batchSize=batchSize,
-                                                                       modelId=modelId,
-                                                                       inferenceType=inferenceType,
-                                                                       evalInfo=evalInfo,
-                                                                       maxInferenceTokens=maxInferenceTokens,
-                                                                       tensorizeModels=tensorizeModels))
+            async def getRollouts():
+                return await getBailBenchRollouts(nRolloutsPerPrompt=nRolloutsPerPrompt,
+                                        batchSize=batchSize,
+                                        modelId=modelId,
+                                        inferenceType=inferenceType,
+                                        evalInfo=evalInfo,
+                                        maxInferenceTokens=maxInferenceTokens,
+                                        tensorizeModels=tensorizeModels)
+            await getCachedFileJsonAsync(outputPath, getRollouts)
             # run this over and over to get all of them, we need to bail so vllm properly cleans up
             return
     raise FinishedException()
 
 
 
-def getBailBenchRollouts(nRolloutsPerPrompt, batchSize, modelId, inferenceType, evalInfo, maxInferenceTokens=1000, tensorizeModels=False):
+async def getBailBenchRollouts(nRolloutsPerPrompt, batchSize, modelId, inferenceType, evalInfo, maxInferenceTokens=1000, tensorizeModels=False):
     router = getRouter(modelId, inferenceType, tensorizeModels=tensorizeModels)
     tokenizeParams, inferenceParams = getParams(modelId, inferenceType, evalInfo, maxInferenceTokens)
    
@@ -205,13 +220,13 @@ def getBailBenchRollouts(nRolloutsPerPrompt, batchSize, modelId, inferenceType, 
         else:
             return [Prompt(messages=[ChatMessage(content=prompts[promptI], role=MessageRole.user)]) for _ in range(nRolloutsPerPrompt)]
 
-    def processBatchFunc(inputBatch):
-        return asyncio.run(router.processPrompts(inputBatch, tokenizeParams, **inferenceParams))
+    async def processBatchFunc(inputBatch):
+        return await router.processPrompts(inputBatch, tokenizeParams, **inferenceParams)
 
     def processOutputFunc(prompt, modelInputs, outputs):
         return [output[0].completion for output in outputs]
 
-    modelOutputs = runBatched(inputs=list(range(len(prompts))),
+    modelOutputs = await runBatchedAsync(inputs=list(range(len(prompts))),
                               getInputs=getInputsFunc,
                               processBatch=processBatchFunc,
                               processOutput=processOutputFunc,
@@ -225,4 +240,4 @@ if __name__ == "__main__":
     batchSize = 1000
     maxInferenceTokens = 2000
     tensorizeModels = True
-    tryAll(nRolloutsPerPrompt=nRolloutsPerPrompt, batchSize=batchSize, maxInferenceTokens=maxInferenceTokens, tensorizeModels=tensorizeModels)
+    asyncio.run(tryAll(nRolloutsPerPrompt=nRolloutsPerPrompt, batchSize=batchSize, maxInferenceTokens=maxInferenceTokens, tensorizeModels=tensorizeModels))
