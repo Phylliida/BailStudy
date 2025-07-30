@@ -33,7 +33,7 @@ def getRouter(modelId, inferenceType, tensorizeModels: bool = False) -> safetyto
         endpointAddress = inferenceType[len("vllm-runpod-serverless-"):]
         runpod_api_key = os.environ['RUNPOD_API_KEY']
         # add it so it knows about it
-        router = safetytooling.apis.InferenceAPI(cache_dir=None, openai_base_url=f"https://api.runpod.ai/v2/{endpointAddress}/openai/v1", openai_api_key=runpod_api_key, openai_num_threads=4000)
+        router = safetytooling.apis.InferenceAPI(cache_dir=None, openai_base_url=f"https://api.runpod.ai/v2/{endpointAddress}/openai/v1", openai_api_key=runpod_api_key, openai_num_threads=2000)
         #router._vllm.headers["Authorization"] = f"Bearer {runpod_api_key}"
         #router = router._vllm
     elif inferenceType == "vllm":
