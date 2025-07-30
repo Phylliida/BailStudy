@@ -13,9 +13,11 @@ from safetytooling import apis, utils
 from safetytooling.apis import inference
 from safetytooling.data_models import LLMResponse, Prompt
 import dotenv
+from transformers import AutoTokenizer
 
 def getRouter(modelId, inferenceType, tensorizeModels: bool = False) -> safetytooling.apis.InferenceAPI:
     # get env keys
+    remote = True
     dotenv.load_dotenv(override=True)
     if inferenceType == "anthropic":
         anthropic_api_key = os.environ['ANTHROPIC_API_KEY']
@@ -26,37 +28,53 @@ def getRouter(modelId, inferenceType, tensorizeModels: bool = False) -> safetyto
     elif inferenceType == "openrouter":
         openrouter_api_key = os.environ['OPENROUTER_API_KEY']
         router = safetytooling.apis.InferenceAPI(cache_dir=None, openai_base_url="https://openrouter.ai/api/v1", openai_api_key=openrouter_api_key)
+    elif inferenceType.startswith("vllm-runpod-serverless-"):
+        # it has the address at the end
+        endpointAddress = inferenceType[len("vllm-runpod-serverless-"):]
+        runpod_api_key = os.environ['RUNPOD_API_KEY']
+        # add it so it knows about it
+        router = safetytooling.apis.InferenceAPI(cache_dir=None, openai_base_url=f"https://api.runpod.ai/v2/{endpointAddress}/openai/v1", openai_api_key=runpod_api_key, openai_num_threads=10000)
+        #router._vllm.headers["Authorization"] = f"Bearer {runpod_api_key}"
+        #router = router._vllm
     elif inferenceType == "vllm":
+        remote = False
         router = vllm.LLM(modelId) if not tensorizeModels else loadTensorizedModel(modelId, getTensorizedModelDir())
     else:
         raise ValueError("Unknown router type", inferenceType)
-    if inferenceType in ['openrouter', 'anthropic', 'openai']:
-        async def processPrompts(prompts, tokenizeArgs, **inferenceArgs):
-            # do parallel tasks, faster for remote inference
-            args = dict(model_id=router.modelId, **inferenceArgs)
-            if not tokenizeArgs['appendToSystemPrompt'] is None:
-                args['system'] = tokenizeArgs['appendToSystemPrompt'] # doesn't support null or empty list so need to only add this if relevant
-            tasks = [router(prompt=Prompt(messages=tokenizeArgs['prefixMessages'] + prompt.messages), **args) for prompt in prompts]
-            return await asyncio.gather(*tasks)
-        router.processPrompts = processPrompts
-    else:
 
+    if inferenceType.startswith("vllm"):
+        tokenizer = router.get_tokenizer() if inferenceType == "vllm" else AutoTokenizer.from_pretrained(modelId)
+        router.tokenizer = tokenizer
         def tokenize(messages, appendToSystemPrompt=None, tools=None, prefixMessages=[]):
             messagesParsed = safetyToolingMessagesToMessages(prefixMessages + messages)
             if appendToSystemPrompt is not None:
                 messagesParsed = [{"role": "system", "content": (getSystemPrompt(tokenizer) + "\n" + appendToSystemPrompt).strip()}] + messagesParsed
             inputs = tokenizer.apply_chat_template(messagesParsed, add_generation_prompt=True, tokenize=True, return_dict=True, return_tensors="pt", tools=tools)
             return inputs['input_ids'][0]
+        router.tokenize = tokenize
 
-        tokenizer = router.get_tokenizer()
+    if remote:
+        async def processPrompts(prompts, tokenizeArgs, **inferenceArgs):
+            # do parallel tasks, faster for remote inference
+            args = dict(model_id=router.modelId, **inferenceArgs)
+            extraPrefixMessages = []
+            if not tokenizeArgs['appendToSystemPrompt'] is None:
+                if inferenceType == 'anthropic':
+                    args['system'] = tokenizeArgs['appendToSystemPrompt'] # doesn't support null or empty list so need to only add this if relevant
+                else:
+                    extraMessages = messagesToSafetyToolingMessages([{"role": "system", "content": tokenizeArgs['appendToSystemPrompt']}])
+            tasks = [router(prompt=Prompt(messages=extraPrefixMessages + tokenizeArgs['prefixMessages'] + prompt.messages), **args) for prompt in prompts]
+            return await asyncio.gather(*tasks)
+        router.processPrompts = processPrompts
+    else:
+
         async def processPrompts(prompts, tokenizeArgs, **inferenceArgs):
             # for local inference, we want to process whole batch, not seperate tasks, this way is faster
-            prompts = [vllm.TokensPrompt(prompt_token_ids=tokenize(prompt.messages, **tokenizeArgs).tolist()) for prompt in prompts]
+            prompts = [vllm.TokensPrompt(prompt_token_ids=router.tokenize(prompt.messages, **tokenizeArgs).tolist()) for prompt in prompts]
             generations = router.generate(prompts, sampling_params=vllm.SamplingParams(**inferenceArgs), use_tqdm=False)
             # reformat outputs to look like other outputs
             # max tokens is fine for now, we could do better later
             return [[LLMResponse(model_id=modelId, completion=output.text, stop_reason="max_tokens") for output in generation.outputs] for generation in generations]
-        router.tokenize = tokenize
         router.processPrompts = processPrompts
     router.modelId = modelId
     return router
@@ -74,6 +92,14 @@ def getParams(modelId, inferenceType, evalInfo, maxInferenceTokens):
             "max_tokens": maxInferenceTokens,
             "max_attempts": 100,
             "print_prompt_and_response": False,
+        }
+    elif inferenceType.startswith("vllm-runpod-serverless-"):
+        # the stop are for aion-labs_Aion-RP-Llama-3.1-8B
+        inferenceParams = {
+            "max_tokens": maxInferenceTokens,
+            "stop": ["__USER__", "__ASSISTANT__"],
+            "print_prompt_and_response": False,
+            "force_provider": "openai", # forces it to use openai compatible api code
         }
     elif inferenceType == "vllm":
         # the stop are for aion-labs_Aion-RP-Llama-3.1-8B

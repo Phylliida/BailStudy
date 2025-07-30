@@ -118,7 +118,8 @@ for modelStr, inferenceType in models:
 
 
 modelsNoPrompt = [
-    ("claude-3-haiku-20240307", "anthropic")
+    ("claude-3-haiku-20240307", "anthropic"),
+    ("claude-sonnet-4-20250514", "anthropic")
 ]
 bailTypesNoPrompt = [ROLLOUT_TYPE, BAIL_TOOL_TYPE, BAIL_STR_TYPE]
 modelsOfInterest = []

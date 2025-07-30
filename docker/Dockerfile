@@ -33,6 +33,6 @@ RUN source $HOME/.local/bin/env && \
     uv venv
 
 RUN source $HOME/.local/bin/env && \
-    uv pip install --no-cache-dir ipykernel huggingface_hub https://github.com/Phylliida/BailStudy.git
+    uv pip install --no-cache-dir ipykernel huggingface_hub git+https://github.com/Phylliida/BailStudy.git
 
 

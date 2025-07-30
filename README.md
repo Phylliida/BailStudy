@@ -6,7 +6,7 @@ Code for reproducing the experiments in our LLM Bail paper (in progress)
 First, install repo and dependencies
 
 ```
-pip install https://github.com/Phylliida/BailStudy.git
+pip install git+https://github.com/Phylliida/BailStudy.git
 ```
 
 Much of the code below is wrapped in while loops, this is because we need to switch vllm models.
