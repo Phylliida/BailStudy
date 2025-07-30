@@ -96,7 +96,7 @@ async def runBailOnRealData():
     maxGenerationTokens = 2000
     maxInputTokens = 8000
     seed = 27
-    batchSize = 10000
+    batchSize = 20000
     tensorizeModels = False # takes up too much memory with GLM
 
     for modelId, inferenceType, evalType, bailType in modelsToRun:
