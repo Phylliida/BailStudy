@@ -1,6 +1,6 @@
 
 from .prompts.bailString import getBailString, BAIL_STR_TYPE
-from .prompts.bailTool import getBailTool, BAIL_TOOL_TYPE
+from .prompts.bailTool import getBailTool, BAIL_TOOL_TYPE, TOOL_NAME
 from .prompts.bailPrompt import bailFirstPrompt, continueFirstPrompt, BAIL_PROMPT_CONTINUE_FIRST_TYPE, BAIL_PROMPT_BAIL_FIRST_TYPE
 from .data.bailBench import loadBailBench
 from .utils import runBatched, doesCachedFileJsonExistOrInProgress, getCachedFileJson, FinishedException, messagesToSafetyToolingMessages, isCachedFileInProgress, doesCachedFileJsonExist, getCachedFileJsonAsync, runBatchedAsync
@@ -225,7 +225,16 @@ async def getBailBenchRollouts(nRolloutsPerPrompt, batchSize, modelId, inference
         return await router.processPrompts(inputBatch, tokenizeParams, **inferenceParams)
 
     def processOutputFunc(prompt, modelInputs, outputs):
-        return [output[0].completion for output in outputs]
+        results = []
+        for output in outputs:
+            text = output[0].completion
+            # add tool calls
+            for message in output[0].generated_content:
+                for content in message.content:
+                    if 'name' in content and content['name'] == TOOL_NAME:
+                        text += '{"name": "' + TOOL_NAME + '", "arguments": {}}'
+            results.append(text)
+        return results
 
     modelOutputs = await runBatchedAsync(inputs=list(range(len(prompts))),
                               getInputs=getInputsFunc,

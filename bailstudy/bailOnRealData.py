@@ -1,4 +1,4 @@
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Union
 import vllm
 import copy
 import asyncio
@@ -29,17 +29,14 @@ async def getRollouts(router, conversations: List[List[Dict[str, str]]], maxInpu
         for turnI, turn in enumerate(conversation):
             if turn['role'] == 'user':
                 conversationSoFar = conversation[:turnI+1]
-                safetyToolingConversationsSoFar = messagesToSafetyToolingMessages(conversationSoFar)
                 # this also does prefixing and adding to system prompt and tools and etc.
-                tokens = router.tokenize(safetyToolingConversationsSoFar, **tokenizeParams)
+                # raw tokenize doesn't require converting to safety tooling first
+                tokens = router.rawTokenize(conversationSoFar, **tokenizeParams)
                 if tokens.size()[0] <= maxInputTokens:
-                    if hasattr(router, "generate"): # local, we can pass in raw tokens
-                        resultPrompts.append(vllm.TokensPrompt(prompt_token_ids=tokens.tolist()))
-                    else: # remote, we need to give it strs
-                        resultPrompts.append(Prompt(messages=safetyToolingConversationsSoFar))
+                    resultPrompts.append(vllm.TokensPrompt(prompt_token_ids=tokens.tolist()))
         return resultPrompts
     
-    async def processBatchFunc(batchOfPrompts: List[str]) -> List[str]:
+    async def processBatchFunc(batchOfPrompts: List[Union[vllm.TokensPrompt,List[int]]]) -> List[str]:
         nonlocal seed
         seed += 1
         # local vllm
@@ -47,10 +44,11 @@ async def getRollouts(router, conversations: List[List[Dict[str, str]]], maxInpu
             samplingParams = vllm.SamplingParams(seed=seed, **inferenceParams)
             modelOutputs = router.generate(batchOfPrompts, sampling_params=samplingParams, use_tqdm=False)
             return [modelOutput.outputs[0].text for modelOutput in modelOutputs]
-        # remote vllm, sadly we need to tokenize again
+        # remote vllm
         else:
-           return await router.processPrompts(batchOfPrompts, tokenizeParams, seed=seed, **inferenceParams)
-
+            # if we have raw arrays above they'll be unflattened
+            outputs = await router.processTokens([prompt['prompt_token_ids'] for prompt in batchOfPrompts], seed=seed, **inferenceParams)
+            return [output[0].completion for output in outputs]
         
     def processOutputFunc(conversationI: List[Dict[str, str]], turnPrompts: List[str], turnOutputs: List[str]) -> Tuple[int, List[Tuple[float, float]]]:
         return turnOutputs
@@ -96,7 +94,7 @@ async def runBailOnRealData():
     maxGenerationTokens = 2000
     maxInputTokens = 8000
     seed = 27
-    batchSize = 20000
+    batchSize = 2000
     tensorizeModels = False # takes up too much memory with GLM
 
     for modelId, inferenceType, evalType, bailType in modelsToRun:

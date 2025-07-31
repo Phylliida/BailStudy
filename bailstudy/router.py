@@ -3,10 +3,13 @@ from .utils import safetyToolingMessagesToMessages, messagesToSafetyToolingMessa
 
 import os
 import vllm
+import time
 import copy
 import safetytooling
 import traceback
+import aiohttp
 import asyncio
+import logging
 from jinja2 import Environment, nodes
 from jinja2.visitor import NodeVisitor
 from safetytooling import apis, utils
@@ -14,6 +17,8 @@ from safetytooling.apis import inference
 from safetytooling.data_models import LLMResponse, Prompt
 import dotenv
 from transformers import AutoTokenizer
+
+LOGGER = logging.getLogger(__name__)
 
 def getRouter(modelId, inferenceType, tensorizeModels: bool = False) -> safetytooling.apis.InferenceAPI:
     # get env keys
@@ -32,8 +37,68 @@ def getRouter(modelId, inferenceType, tensorizeModels: bool = False) -> safetyto
         # it has the address at the end
         endpointAddress = inferenceType[len("vllm-runpod-serverless-"):]
         runpod_api_key = os.environ['RUNPOD_API_KEY']
+        headers = {"Content-Type": "application/json"}
+        headers["Authorization"] = f"Bearer {runpod_api_key}"
         # add it so it knows about it
-        router = safetytooling.apis.InferenceAPI(cache_dir=None, openai_base_url=f"https://api.runpod.ai/v2/{endpointAddress}/openai/v1", openai_api_key=runpod_api_key, openai_num_threads=2000)
+        runUrl = f"https://api.runpod.ai/v2/{endpointAddress}/run"
+        statusUrl = f"https://api.runpod.ai/v2/{endpointAddress}/status"
+        #router = safetytooling.apis.InferenceAPI(cache_dir=None, openai_base_url=f"https://api.runpod.ai/v2/{endpointAddress}/openai/v1", openai_api_key=runpod_api_key, openai_num_threads=2000)
+        #routerCreate = router._openai_completion.aclient.completions.create
+        async def createWrapper(prompt, model, **samplingParams):
+            requestJson = {
+                "input": {
+                    "prompt": prompt,
+                    "model": model,
+                    "sampling_params": samplingParams,
+                }
+            }
+            MAX_ATTEMPTS = 10
+            for i in range(MAX_ATTEMPTS):
+                try:
+                    start_time = time.time()
+                    max_time = 60*15 # 15 minute timeout, sometimes they can take up to 9 minutes to complete
+                    async with aiohttp.ClientSession() as session:
+                        async with session.post(runUrl, headers=headers, json=requestJson, timeout=60) as response:
+                            if response.status != 200:
+                                error_text = await response.text()
+                                raise Exception(f"Failed to submit job: Status {response.status}, {error_text}")
+                            job_data = await response.json()
+                        
+                        job_id = job_data["id"]
+                        
+                        # Poll for result
+                        while time.time() - start_time < max_time:
+                            await asyncio.sleep(1)  # Poll every 1 second
+                            
+                            async with session.get(statusUrl, headers=headers, timeout=30) as status_response:
+                                if status_response.status != 200:
+                                    error_text = await status_response.text()
+                                    LOGGER.info(f"Status check failed: {error_text}")
+                                    continue
+                                
+                                status_data = await status_response.json()
+                            
+                            status = status_data.get("status", "UNKNOWN")
+                            
+                            if status == "COMPLETED":
+                                output = status_data.get("output", {})
+                                print("completed!")
+                                return [choice['tokens'][0] for choice in output['choices']]
+                            elif status == "FAILED":
+                                error_msg = status_data.get("error", "Unknown error")
+                                raise Exception(f"RunPod job failed: {error_msg}")
+                            elif status in ["IN_QUEUE", "IN_PROGRESS"]:
+                                continue  # Keep polling
+                            else:
+                                LOGGER.warning(f"Unknown status: {status}")
+                                continue
+                
+                        raise Exception(f"RunPod job timed out after {max_time} seconds")
+                except Exception as e:
+                    print(f"attempt {i+1}/{MAX_ATTEMPTS} failed: {str(e)[:50]}")
+                    if i == MAX_ATTEMPTS-1:
+                        raise
+        router = createWrapper
         #router._vllm.headers["Authorization"] = f"Bearer {runpod_api_key}"
         #router = router._vllm
     elif inferenceType == "vllm":
@@ -46,11 +111,15 @@ def getRouter(modelId, inferenceType, tensorizeModels: bool = False) -> safetyto
         tokenizer = router.get_tokenizer() if inferenceType == "vllm" else AutoTokenizer.from_pretrained(modelId)
         router.tokenizer = tokenizer
         def tokenize(messages, appendToSystemPrompt=None, tools=None, prefixMessages=[]):
-            messagesParsed = safetyToolingMessagesToMessages(prefixMessages + messages)
+            messagesParsed = safetyToolingMessagesToMessages(messages)
+            return router.rawTokenize(messagesParsed, appendToSystemPrompt=appendToSystemPrompt, tools=tools, prefixMessages=prefixMessages)
+        def rawTokenize(messages, appendToSystemPrompt=None, tools=None, prefixMessages=[]):
+            messages = safetyToolingMessagesToMessages(prefixMessages) + messages
             if appendToSystemPrompt is not None:
-                messagesParsed = [{"role": "system", "content": (getSystemPrompt(tokenizer) + "\n" + appendToSystemPrompt).strip()}] + messagesParsed
-            inputs = tokenizer.apply_chat_template(messagesParsed, add_generation_prompt=True, tokenize=True, return_dict=True, return_tensors="pt", tools=tools)
+                messages = [{"role": "system", "content": (getSystemPrompt(tokenizer) + "\n" + appendToSystemPrompt).strip()}] + messages
+            inputs = tokenizer.apply_chat_template(messages, add_generation_prompt=True, tokenize=True, return_dict=True, return_tensors="pt", tools=tools)
             return inputs['input_ids'][0]
+        router.rawTokenize = rawTokenize
         router.tokenize = tokenize
 
     if remote:
@@ -65,6 +134,27 @@ def getRouter(modelId, inferenceType, tensorizeModels: bool = False) -> safetyto
                     extraMessages = messagesToSafetyToolingMessages([{"role": "system", "content": tokenizeArgs['appendToSystemPrompt']}])
             tasks = [router(prompt=Prompt(messages=extraPrefixMessages + tokenizeArgs['prefixMessages'] + prompt.messages), **args) for prompt in prompts]
             return await asyncio.gather(*tasks)
+        async def processTokens(promptTokens, **inferenceArgs):
+            args = dict(model=router.modelId, **inferenceArgs)
+            if 'print_prompt_and_response' in args.keys():
+                del args['print_prompt_and_response']
+            if 'max_attempts' in args.keys():
+                del args['max_attempts']
+            if 'force_provider' in args.keys():
+                del args['force_provider']
+            totalLen = len(promptTokens)
+            batchSize = 500
+            tasks = []
+            for startI in range(0, totalLen, batchSize):
+                endI = min(totalLen, startI + batchSize)
+                batchTokens = promptTokens[startI:endI]
+                tasks.append(router(prompt=batchTokens, **args))
+            results = await asyncio.gather(*tasks) 
+            allOutputs = []
+            for result in results:
+                allOutputs += [[LLMResponse(model_id=modelId, completion=text, stop_reason="max_tokens")] for text in result]
+            return allOutputs
+        router.processTokens = processTokens
         router.processPrompts = processPrompts
     else:
 

@@ -38,6 +38,12 @@ while python -m bailstudy.bailBenchEval; do :; done
 
 ## Troubleshooting
 
+## ImportError: cannot import name 'TokenizerMode' from 'vllm.config' (/root/.venv/lib/python3.11/site-packages/vllm/config.py)
+
+```
+pip install vllm --upgrade
+```
+
 ### Model stuck on downloading
 
 Run

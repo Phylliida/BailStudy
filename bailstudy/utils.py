@@ -462,18 +462,20 @@ async def runBatchedIteratorAsync(
     with KeyPoller(noCancel) as keypoller:
 
         def onBatch(batchEnd):
-            nonlocal n
-            elapsed      = timestampMillis() - startTime
-            ms_per_item  = elapsed / float(batchEnd)
-            totalTimeEst = elapsed * n / float(batchEnd)
-            timeLeft     = totalTimeEst - elapsed
+            elapsed = timestampMillis() - startTime
+            secondsPerPrompt = elapsed / (float(batchEnd))
+            totalTime = elapsed *  n / float(batchEnd)
+            timeLeft = totalTime - elapsed
+            dispStr = secondsToDisplayStr(timeLeft/1000.0)
+            doneDateTimeStr = getFutureDatetime(timeLeft/1000.0).strftime('%I:%M:%S %p')
             if verbose:
-                disp = secondsToDisplayStr(timeLeft / 1000.0)
-                done = getFutureDatetime(timeLeft / 1000.0).strftime('%I:%M:%S %p')
-                print(batchEnd, "/", n, f"{ms_per_item:.1f} ms/item  {disp}done at {done}")
-            key = keypoller.poll()
-            if key and str(key) == "c":
-                raise ValueError("stopped by user")
+                print(batchEnd, "/", n, f"{secondsPerPrompt} millis per item {dispStr}done at {doneDateTimeStr}")
+            keys = keypoller.poll()
+            if not keys is None:
+                print(keys)
+                if str(keys) == "c":
+                    print("got c")
+                    raise ValueError("stopped")   
 
         flattenedOutputsIter = getFlattenedOutputsIterator(flattenedAsyncGen(),
                                                            runOnBatchFunc=onBatch)
@@ -483,7 +485,8 @@ async def runBatchedIteratorAsync(
         async for input_, inputUnflattened, inputFlattened in agenFromSyncIter(
                 zip(inputs, inputsIter2, flattenedIter2)):
             # progress estimation bookkeeping
-            averageNPerN = (averageNPerN * idx + len(inputFlattened)) / (idx + 1)
+            print(len(inputFlattened), averageNPerN, idx, n)
+            averageNPerN = (averageNPerN * idx + len(inputFlattened)) / float(idx + 1)
             n   = math.ceil(baselineN * averageNPerN)
             idx += 1
 
