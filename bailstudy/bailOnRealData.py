@@ -68,9 +68,9 @@ modelsToRun = [
     ("Qwen/Qwen2.5-7B-Instruct", "vllm", "", BAIL_STR_TYPE),
     ("Qwen/Qwen2.5-7B-Instruct", "vllm", "", BAIL_TOOL_TYPE),
     
-    ("zai-org/GLM-4-32B-0414", f"vllm-runpod-serverless-{GLM_REMOTE}", "", ROLLOUT_TYPE),
-    ("zai-org/GLM-4-32B-0414", f"vllm-runpod-serverless-{GLM_REMOTE}", "", BAIL_STR_TYPE),
-    ("zai-org/GLM-4-32B-0414", f"vllm-runpod-serverless-{GLM_REMOTE}", "", BAIL_TOOL_TYPE),
+    ("zai-org/GLM-4-32B-0414", f"vllm", "", ROLLOUT_TYPE),
+    ("zai-org/GLM-4-32B-0414", f"vllm", "", BAIL_STR_TYPE),
+    ("zai-org/GLM-4-32B-0414", f"vllm", "", BAIL_TOOL_TYPE),
 
     ("google/gemma-2-2b-it", "vllm", "", ROLLOUT_TYPE),
     #("google/gemma-2-2b-it", "vllm", "", BAIL_STR_TYPE),
@@ -84,8 +84,13 @@ async def runBailOnRealData():
     # see https://github.com/vllm-project/vllm/blob/main/vllm/entrypoints/openai/tool_parsers/hermes_tool_parser.py#L64
      # Qwen 3 uses hermes parser, see docs
 
+    # only do 1/4 of wildchat to save time
+    def loadWildchatSubset():
+        data = loadWildchat()
+        return data[:len(data)//4]
+    
     dataFuncs = [
-        ("wildchat", loadWildchat),
+        ("wildchat", loadWildchatSubset),
         ("shareGPT", loadShareGPT)
     ]
 
@@ -94,7 +99,7 @@ async def runBailOnRealData():
     maxGenerationTokens = 2000
     maxInputTokens = 8000
     seed = 27
-    batchSize = 2000
+    batchSize = 500
     tensorizeModels = False # takes up too much memory with GLM
 
     for modelId, inferenceType, evalType, bailType in modelsToRun:
