@@ -485,7 +485,6 @@ async def runBatchedIteratorAsync(
         async for input_, inputUnflattened, inputFlattened in agenFromSyncIter(
                 zip(inputs, inputsIter2, flattenedIter2)):
             # progress estimation bookkeeping
-            print(len(inputFlattened), averageNPerN, idx, n)
             averageNPerN = (averageNPerN * idx + len(inputFlattened)) / float(idx + 1)
             n   = math.ceil(baselineN * averageNPerN)
             idx += 1

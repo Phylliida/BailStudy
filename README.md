@@ -38,6 +38,14 @@ while python -m bailstudy.bailBenchEval; do :; done
 
 ## Troubleshooting
 
+## generated_content does not exist
+
+Make sure you've installed the branch of safety tooling with tool support
+
+```
+pip install git+https://github.com/safety-research/safety-tooling.git@abhay/tools
+```
+
 ## ImportError: cannot import name 'TokenizerMode' from 'vllm.config' (/root/.venv/lib/python3.11/site-packages/vllm/config.py)
 
 ```

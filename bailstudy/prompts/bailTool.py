@@ -3,7 +3,7 @@ from transformers import AutoTokenizer
 TOOL_NAME = "switchconversation_tool"
 
 BAIL_TOOL_TYPE = "bail tool"
-
+BAIL_TOOL_CALLED_STR = f"{TOOL_NAME} called"
 
 def getToolParser(modelStr):
     tokenizer = AutoTokenizer.from_pretrained(modelStr)
@@ -47,7 +47,7 @@ def getBailTool(modelStr, inferenceType="vllm"):
         }
     # using this code https://github.com/safety-research/safety-tooling/pull/114
     elif inferenceType == "anthropic":
-        def bailToolFunc(a, s): # This gets appended to output and then claude responds
+        def bailToolFunc(*a, **b): # This gets appended to output and then claude responds
             return BAIL_TOOL_CALLED_STR
         from langchain.tools import StructuredTool
         tool = StructuredTool.from_function(func=bailToolFunc, name=TOOL_NAME, description=toolDescription)

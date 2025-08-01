@@ -101,7 +101,6 @@ def getEvalInfo(modelName, inferenceType, evalType, bailType):
 
 bailTypes = [ROLLOUT_TYPE, BAIL_TOOL_TYPE, BAIL_STR_TYPE, BAIL_PROMPT_BAIL_FIRST_TYPE, BAIL_PROMPT_CONTINUE_FIRST_TYPE]
 
-## FOR CLAUDE BAIL TOOL WE NEED TO STORE MORE DATAS!!
 models = [
     ("Qwen/Qwen2.5-7B-Instruct", "vllm"),
     ("Qwen/Qwen3-8B", "vllm"),
@@ -119,13 +118,19 @@ for modelStr, inferenceType in models:
 
 modelsNoPrompt = [
     ("claude-3-haiku-20240307", "anthropic"),
-    ("claude-sonnet-4-20250514", "anthropic")
+    ("claude-3-5-haiku-20241022", "anthropic"),
+    ("claude-3-5-sonnet-20240620", "anthropic"),
+    ("claude-3-5-sonnet-20241022", "anthropic"),
+    ("claude-3-7-sonnet-20250219", "anthropic"),
+    ("claude-3-opus-20240229", "anthropic"),
+    ("claude-opus-4-20250514", "anthropic"),
+    ("claude-sonnet-4-20250514", "anthropic"),
 ]
-bailTypesNoPrompt = [ROLLOUT_TYPE, BAIL_TOOL_TYPE, BAIL_STR_TYPE]
+bailTypesNoPrompt = [BAIL_TOOL_TYPE, BAIL_STR_TYPE, ROLLOUT_TYPE]
 modelsOfInterest = []
 for modelStr, inferenceType in modelsNoPrompt:
     for bailType in bailTypesNoPrompt:
-        modelsOfInterest.append((modelStr, inferenceType, "", bailType))
+        modelsOfInterest.insert(0, (modelStr, inferenceType, "", bailType))
 
 evalTypes = [
     "DAN",
@@ -249,5 +254,5 @@ if __name__ == "__main__":
     nRolloutsPerPrompt = 25
     batchSize = 1000
     maxInferenceTokens = 2000
-    tensorizeModels = True
+    tensorizeModels = False
     asyncio.run(tryAll(nRolloutsPerPrompt=nRolloutsPerPrompt, batchSize=batchSize, maxInferenceTokens=maxInferenceTokens, tensorizeModels=tensorizeModels))
