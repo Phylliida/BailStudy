@@ -170,7 +170,7 @@ async def tryAll(nRolloutsPerPrompt, batchSize, maxInferenceTokens=1000, tensori
                 return # need to bail so vllm tensorization can clean up gpu properly
 
         if not doesCachedFileJsonExistOrInProgress(outputPath):
-            print(f"Running rollout for {modelId} {inferenceType} {evalType} {bailType}")
+            print(f"Running for {modelId} {inferenceType} eval type {evalType} bail type {bailType}")
 
 
             # need rollout data as part of bail prompt
@@ -238,6 +238,7 @@ async def getBailBenchRollouts(nRolloutsPerPrompt, batchSize, modelId, inference
                 for content in message.content:
                     if 'name' in content and content['name'] == TOOL_NAME:
                         text += '{"name": "' + TOOL_NAME + '", "arguments": {}}'
+                        print("GOT TOOL!!!")
             results.append(text)
         return results
 
