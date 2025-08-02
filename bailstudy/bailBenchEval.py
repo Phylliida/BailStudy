@@ -119,12 +119,14 @@ for modelStr, inferenceType in models:
 modelsNoPrompt = [
     ("claude-3-haiku-20240307", "anthropic"),
     ("claude-3-5-haiku-20241022", "anthropic"),
+
     ("claude-3-5-sonnet-20240620", "anthropic"),
     ("claude-3-5-sonnet-20241022", "anthropic"),
     ("claude-3-7-sonnet-20250219", "anthropic"),
+    ("claude-sonnet-4-20250514", "anthropic"),
+    
     ("claude-3-opus-20240229", "anthropic"),
     ("claude-opus-4-20250514", "anthropic"),
-    ("claude-sonnet-4-20250514", "anthropic"),
 ]
 bailTypesNoPrompt = [BAIL_TOOL_TYPE, BAIL_STR_TYPE, ROLLOUT_TYPE]
 modelsOfInterest = []
@@ -238,7 +240,6 @@ async def getBailBenchRollouts(nRolloutsPerPrompt, batchSize, modelId, inference
                 for content in message.content:
                     if 'name' in content and content['name'] == TOOL_NAME:
                         text += '{"name": "' + TOOL_NAME + '", "arguments": {}}'
-                        print("GOT TOOL!!!")
             results.append(text)
         return results
 

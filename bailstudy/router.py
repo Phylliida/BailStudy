@@ -176,15 +176,18 @@ def getParams(modelId, inferenceType, evalInfo, maxInferenceTokens):
             "max_tokens": maxInferenceTokens,
             "force_provider": "openai",
             "print_prompt_and_response": False,
+            "tools": evalInfo['tools']
         }
     elif inferenceType == "anthropic":
         inferenceParams = {
             "max_tokens": maxInferenceTokens,
             "max_attempts": 100,
             "print_prompt_and_response": False,
+            "tools": evalInfo['tools']
         }
     elif inferenceType.startswith("vllm-runpod-serverless-"):
         # the stop are for aion-labs_Aion-RP-Llama-3.1-8B
+        # note that tool call support not yet enabled on vllm runpod serverless
         inferenceParams = {
             "max_tokens": maxInferenceTokens,
             "stop": ["__USER__", "__ASSISTANT__"],
