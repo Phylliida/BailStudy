@@ -48,6 +48,10 @@ pip install git+https://github.com/safety-research/safety-tooling.git@abhay/tool
 
 ## ImportError: cannot import name 'TokenizerMode' from 'vllm.config' (/root/.venv/lib/python3.11/site-packages/vllm/config.py)
 
+## ImportError: cannot import name 'ResponsePrompt' from 'openai.types.responses'
+
+For both these, just do
+
 ```
 pip install vllm --upgrade
 ```

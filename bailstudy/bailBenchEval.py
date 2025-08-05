@@ -127,8 +127,26 @@ modelsNoPrompt = [
     
     ("claude-3-opus-20240229", "anthropic"),
     ("claude-opus-4-20250514", "anthropic"),
+
+
+    ("gpt-4.1-nano", "openai"),
+    ("gpt-4.1-mini", "openai"),
+    ("gpt-4.1", "openai"),
+    ('gpt-4.5-preview', "openai"),
+    ("o4-mini", "openai"),
+    ("o3-mini", "openai"),
+    ("o3", "openai"),
+    ("o1-mini", "openai"),
+    ("o1-preview", "openai"),
+    ("o1", "openai"),
+    ("gpt-4-turbo", "openai"),
+    ("gpt-4", "openai"),
+    ("gpt-3.5-turbo", "openai"),
+    ("gpt-4o-mini", "openai"),
+    ("gpt-4o", "openai"),
+    ("gpt-4.1", "openai"),
 ]
-bailTypesNoPrompt = [BAIL_TOOL_TYPE, BAIL_STR_TYPE, ROLLOUT_TYPE]
+bailTypesNoPrompt = [ROLLOUT_TYPE, BAIL_STR_TYPE, BAIL_TOOL_TYPE]
 modelsOfInterest = []
 for modelStr, inferenceType in modelsNoPrompt:
     for bailType in bailTypesNoPrompt:
@@ -172,7 +190,7 @@ async def tryAll(nRolloutsPerPrompt, batchSize, maxInferenceTokens=1000, tensori
                 return # need to bail so vllm tensorization can clean up gpu properly
 
         if not doesCachedFileJsonExistOrInProgress(outputPath):
-            print(f"Running for {modelId} {inferenceType} eval type {evalType} bail type {bailType}")
+            print(f"Running for {modelId} {inferenceType} eval type {'<Default>' if evalType == '' else evalType} bail type {bailType}")
 
 
             # need rollout data as part of bail prompt
@@ -233,13 +251,12 @@ async def getBailBenchRollouts(nRolloutsPerPrompt, batchSize, modelId, inference
 
     def processOutputFunc(prompt, modelInputs, outputs):
         results = []
+        # Add tool calls to output text
         for output in outputs:
             text = output[0].completion
-            # add tool calls
             for message in output[0].generated_content:
-                for content in message.content:
-                    if 'name' in content and content['name'] == TOOL_NAME:
-                        text += '{"name": "' + TOOL_NAME + '", "arguments": {}}'
+                if message.role == MessageRole.tool and message.content['tool_name'] == TOOL_NAME:
+                    text += '{"name": "' + TOOL_NAME + '", "arguments": {}}'
             results.append(text)
         return results
 
@@ -253,7 +270,7 @@ async def getBailBenchRollouts(nRolloutsPerPrompt, batchSize, modelId, inference
 
 # run this over and over to get all of them, we need to bail so vllm properly cleans up
 if __name__ == "__main__":
-    nRolloutsPerPrompt = 25
+    nRolloutsPerPrompt = 10
     batchSize = 1000
     maxInferenceTokens = 2000
     tensorizeModels = False
