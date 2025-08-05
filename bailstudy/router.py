@@ -130,10 +130,9 @@ def getRouter(modelId, inferenceType, tensorizeModels: bool = False) -> safetyto
             if not tokenizeArgs['appendToSystemPrompt'] is None:
                 if inferenceType == 'anthropic':
                     args['system'] = tokenizeArgs['appendToSystemPrompt'] # doesn't support null or empty list so need to only add this if relevant
-                elif inferenceType == 'openai':
-                    args['instruction'] = tokenizeArgs['appendToSystemPrompt']
                 else:
-                    extraMessages = messagesToSafetyToolingMessages([{"role": "system", "content": tokenizeArgs['appendToSystemPrompt']}])
+                    role = 'developer' if inferenceType == 'openai' else 'system' # openai is weird, older models will auto convert back to system supposedly
+                    extraPrefixMessages += messagesToSafetyToolingMessages([{"role": role, "content": tokenizeArgs['appendToSystemPrompt']}]) if tokenizeArgs['appendToSystemPrompt'] is not None else []
             tasks = [router(prompt=Prompt(messages=extraPrefixMessages + tokenizeArgs['prefixMessages'] + prompt.messages), **args) for prompt in prompts]
             return await asyncio.gather(*tasks)
         async def processTokens(promptTokens, **inferenceArgs):
