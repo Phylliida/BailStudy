@@ -46,7 +46,7 @@ def getRefusePr(minos, allOutputs):
     return float(np.mean(np.array(refusePrs).flatten()))
 
 
-def processData(minos, toolParser, bailType, outputs):
+def processData(minos, modelId, inferenceType, evalType, bailType, toolParser, allOutputs):
     if bailType == ROLLOUT_TYPE:
         refusePr = getRefusePr(minos, allOutputs)
         print(modelId, inferenceType, evalType, bailType, refusePr)
@@ -89,11 +89,11 @@ def processBailBenchEval(batchSize):
         print(modelId, inferenceType, evalType, bailType)
         outputPath = getOutputPath(modelId, inferenceType, evalType, bailType)
         processedOutputPath = getProcessedOutputPath(modelId, inferenceType, evalType, bailType)
-        toolParser = getToolParser(modelId)
+        toolParser = getToolParser(modelId, inferenceType)
         if os.path.exists(getCachedFilePath(outputPath)):
-            def process(b):
+            def process():
                 outputs = getCachedFileJson(outputPath, lambda: None)
-                return processData(minos, toolParser, bailType, outputs)
+                return processData(minos, modelId, inferenceType, evalType, bailType, toolParser, outputs)
             processedData = getCachedFileJson(processedOutputPath, process)
             # join by bail type
             for k,v in processedData.items():
@@ -102,6 +102,7 @@ def processBailBenchEval(batchSize):
     with open(fullResultsOutputPath, "w") as f:
         ujson.dump(dict(collectedResults), f)
 
+# This requires vllm==0.8.5
 if __name__ == "__main__":
     batchSize = 10000 # minos is smol so large batch is fine
     processBailBenchEval(batchSize)

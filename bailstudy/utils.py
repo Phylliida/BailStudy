@@ -529,11 +529,13 @@ def roleToSafetyToolingRole(role):
     if role == "user": return MessageRole.user
     if role == "assistant": return MessageRole.assistant
     if role == "system": return MessageRole.system
+    if role == "developer": return MessageRole.developer
     raise ValueError(f"Unknown role {role}")
 def safetyToolingRoleToRole(safetyToolingRole):
     if safetyToolingRole == MessageRole.user: return "user"
     if safetyToolingRole == MessageRole.assistant: return "assistant"
     if safetyToolingRole == MessageRole.system: return "system"
+    if safetyToolingRole == MessageRole.developer: return "developer"
     raise ValueError(f"Unknown role {safetyToolingRole}")
 def messagesToSafetyToolingMessages(messages):
     return [ChatMessage(content=message["content"], role=roleToSafetyToolingRole(message["role"])) for message in messages]

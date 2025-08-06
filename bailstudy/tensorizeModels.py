@@ -6,8 +6,11 @@ from transformers.utils import CONFIG_NAME
 import pathlib
 import os
 
-from vllm.config import (CompilationConfig, TokenizerMode,
-                         is_init_field)
+try:
+    from vllm.config import (CompilationConfig, TokenizerMode,
+                             is_init_field)
+except:
+    pass # permit this to import on lower vllm versions and then don't support tensorizing it'll error later
 from vllm.model_executor.model_loader.tensorizer import (
     TensorizerArgs,
     TensorizerConfig,

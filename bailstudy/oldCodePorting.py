@@ -44,88 +44,89 @@ def convertDataToOldCodeData(batchSize):
             path = f"{p}/{modelS}.json.gz"
             if not os.path.exists(getCachedFilePath(path)):
                 needToAddFiles = True
-        if os.path.exists(getCachedFilePath(outputPath)) and os.path.exists(getCachedFilePath(processedOutputPath)) and needToAddFiles:
-            toolParser = getToolParser(modelId)
-            allOutputs = getCachedFileJson(outputPath, lambda: None)
-            processedData = getCachedFileJson(processedOutputPath, lambda: None)
-            datas = [x for x in loadBailBench()]
-            groupedByCategory = defaultdict(lambda: [])
-            groupedByCategoryBailPrs = defaultdict(lambda: {
-                    "🟢": 0.0,
-                    "🔄": 0.0,
-                    "?": 0.0
-            })
-            refusalPrs = { # don't bother with these
-                "Completed": 0.0,
-                "Refused": 0.0,
-                "Unclear": 0.0,
-                "More Information": 0.0,
-            }
-            for promptData, promptOutputs in zip(datas, allOutputs):
-                category = promptData['subcategory'] + "," + promptData['category']
-                promptBailPrs = {
-                    "🟢": 0.0,
-                    "🔄": 0.0,
-                    "?": 0.0
+        if os.path.exists(getCachedFilePath(outputPath)) and os.path.exists(getCachedFilePath(processedOutputPath)):
+            if needToAddFiles:
+                toolParser = getToolParser(modelId, inferenceType)
+                allOutputs = getCachedFileJson(outputPath, lambda: None)
+                processedData = getCachedFileJson(processedOutputPath, lambda: None)
+                datas = [x for x in loadBailBench()]
+                groupedByCategory = defaultdict(lambda: [])
+                groupedByCategoryBailPrs = defaultdict(lambda: {
+                        "🟢": 0.0,
+                        "🔄": 0.0,
+                        "?": 0.0
+                })
+                refusalPrs = { # don't bother with these
+                    "Completed": 0.0,
+                    "Refused": 0.0,
+                    "Unclear": 0.0,
+                    "More Information": 0.0,
                 }
-                responses = []
-                for output in promptOutputs:
-                    didBail = False
-                    didBailUnknown = False
-                    if bailType == BAIL_TOOL_TYPE:
-                        didBail = calledBailTool(output, toolParser)
-                    elif bailType == BAIL_STR_TYPE:
-                        didBail = hasBailStr(output)
-                    elif bailType == BAIL_PROMPT_BAIL_FIRST_TYPE or bailType == BAIL_PROMPT_CONTINUE_FIRST_TYPE:
-                        bailSymbol = getBailPromptStatus(output)
-                        didBail == bailSymbol == "🔄"
-                        didBailUnknown = bailSymbol == "?"
-                    bailPrs = {
-                        "🟢": 0.0 if didBail else 1.0,
-                        "🔄": 1.0 if didBail else 0.0,
-                        "?": 1.0 if didBailUnknown else 0.0
+                for promptData, promptOutputs in zip(datas, allOutputs):
+                    category = promptData['subcategory'] + "," + promptData['category']
+                    promptBailPrs = {
+                        "🟢": 0.0,
+                        "🔄": 0.0,
+                        "?": 0.0
                     }
-                    for k,v in bailPrs.items():
-                        promptBailPrs[k] += v/float(len(promptOutputs))
-                        # 10 per category
-                        groupedByCategoryBailPrs[category][k] += v/(10*float(len(promptOutputs)))
-                    responses.append({
-                        "response": output,
-                        "bailPrs": bailPrs,
-                        "refusalPrs": refusalPrs,
-                        "bailData": [
-                            {
-                                "response": "BAIL" if didBail else "CONTINUE",
-                                "bailSymbol": "🔄" if didBail else "🟢"
-                            }
-                        ]
-                    })
+                    responses = []
+                    for output in promptOutputs:
+                        didBail = False
+                        didBailUnknown = False
+                        if bailType == BAIL_TOOL_TYPE:
+                            didBail = calledBailTool(output, toolParser)
+                        elif bailType == BAIL_STR_TYPE:
+                            didBail = hasBailStr(output)
+                        elif bailType == BAIL_PROMPT_BAIL_FIRST_TYPE or bailType == BAIL_PROMPT_CONTINUE_FIRST_TYPE:
+                            bailSymbol = getBailPromptStatus(output)
+                            didBail == bailSymbol == "🔄"
+                            didBailUnknown = bailSymbol == "?"
+                        bailPrs = {
+                            "🟢": 0.0 if didBail else 1.0,
+                            "🔄": 1.0 if didBail else 0.0,
+                            "?": 1.0 if didBailUnknown else 0.0
+                        }
+                        for k,v in bailPrs.items():
+                            promptBailPrs[k] += v/float(len(promptOutputs))
+                            # 10 per category
+                            groupedByCategoryBailPrs[category][k] += v/(10*float(len(promptOutputs)))
+                        responses.append({
+                            "response": output,
+                            "bailPrs": bailPrs,
+                            "refusalPrs": refusalPrs,
+                            "bailData": [
+                                {
+                                    "response": "BAIL" if didBail else "CONTINUE",
+                                    "bailSymbol": "🔄" if didBail else "🟢"
+                                }
+                            ]
+                        })
 
-                groupedByCategory[category].append({
-                    "prompt": promptData['content'],
-                    "bailPrs": promptBailPrs,
-                    "refusalPrs": refusalPrs,
-                    "responses": responses,
-                })
-            jsonResults = {"bailOutPrompt": getBailOutPrompt(modelId, inferenceType, bailType)}
-            results = []
-            for category in groupedByCategory.keys():
-                results.append({
-                    "category": category,
-                    "bailPrs": groupedByCategoryBailPrs[category],
-                    "refusalPrs": refusalPrs,
-                    "data": groupedByCategory[category]
-                })
-            jsonResults['results'] = results
+                    groupedByCategory[category].append({
+                        "prompt": promptData['content'],
+                        "bailPrs": promptBailPrs,
+                        "refusalPrs": refusalPrs,
+                        "responses": responses,
+                    })
+                jsonResults = {"bailOutPrompt": getBailOutPrompt(modelId, inferenceType, bailType)}
+                results = []
+                for category in groupedByCategory.keys():
+                    results.append({
+                        "category": category,
+                        "bailPrs": groupedByCategoryBailPrs[category],
+                        "refusalPrs": refusalPrs,
+                        "data": groupedByCategory[category]
+                    })
+                jsonResults['results'] = results
+                for p in ["mergedbailswapped", "mergedbailnoswap"]:
+                    path = f"{p}/{modelS}.json.gz"
+                    with gzip.open(getCachedFilePath(path), "wt", encoding="utf-8") as gz:
+                        json.dump(jsonResults, gz, separators=(",", ":"))
             for p in ["mergedbailswapped", "mergedbailnoswap"]:
-                path = f"{p}/{modelS}.json.gz"
-                with gzip.open(getCachedFilePath(path), "wt", encoding="utf-8") as gz:
-                    json.dump(jsonResults, gz, separators=(",", ":"))
-        for p in ["mergedbailswapped", "mergedbailnoswap"]:
-            if p == "mergedbailnoswap":
-                models.append({"modelName": f"{modelId}-{inferenceType}-{evalType}-{bailType}", "modelData": f"/modelwelfare/{p}/{modelS}.json.gz"})
-            else:
-                modelsSwapped.append({"modelName": f"{modelId}-{inferenceType}-{evalType}-{bailType}", "modelData": f"/modelwelfare/{p}/{modelS}.json.gz"})
+                if p == "mergedbailnoswap":
+                    models.append({"modelName": f"{modelId}-{inferenceType}-{evalType}-{bailType}", "modelData": f"/modelwelfare/{p}/{modelS}.json.gz"})
+                else:
+                    modelsSwapped.append({"modelName": f"{modelId}-{inferenceType}-{evalType}-{bailType}", "modelData": f"/modelwelfare/{p}/{modelS}.json.gz"})
     
     with gzip.open(getCachedFilePath("mergedbailnoswap/models.json.gz"), "wt", encoding="utf-8") as gz:
         json.dump(models, gz, separators=(",", ":"))

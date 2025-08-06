@@ -1,6 +1,7 @@
 from vllm.entrypoints.openai.tool_parsers.abstract_tool_parser import (ToolParser, ToolParserManager)
 from transformers import AutoTokenizer
 from langchain.tools import StructuredTool
+from .bailPrompt import removeThinking
 
 TOOL_NAME = "switchconversation_tool"
 BAIL_TOOL_TYPE = "bail tool"
@@ -26,7 +27,7 @@ def getToolParser(modelStr, inferenceType):
 
 def calledBailTool(outputText, toolParser):
     if toolParser is None: # openai or anthropic model
-        return 
+        return ('{"name": "' + TOOL_NAME + '"') in removeThinking(outputText)
     try:
         tool_calls = toolParser.extract_tool_calls(model_output=outputText, request=None) # it doesn't use request so we can just set it to None
         return tool_calls.tools_called and len(tool_calls.tool_calls) > 0 and any([tool.function.name.lower().strip() == TOOL_NAME for tool in tool_calls.tool_calls])
