@@ -19,6 +19,7 @@ def getCleanedModelName(modelName):
     modelName = modelName.replace("-20241022", "") # haiku 3.5
     modelName = modelName.replace("-20240307", "") # haiku 3
     modelName = modelName.replace("-20250514", "") # opus and sonnet 4
+    modelName = modelName.replace("-4-1-20250805", "-4-1") # opus 4.1
     modelName = modelName.replace("3-5-sonnet-latest", "3-6-sonnet")
     modelName = modelName.replace("Qwen/", "")
     modelName = modelName.replace("unsloth/gemma-", "google/gemma-")
@@ -66,19 +67,19 @@ CHARTDATA
     \addlegendentry{Unsure (Bail Prompt Continue-first)}
   \addplot[fill=clr3] table[y=promptBailFirstContinuePr,x expr=\coordindex]{\datatable};
     \addlegendentry{Continue (Bail Prompt Continue-first)}
-  \addplot[fill=clr4, postaction={pattern=north east lines}] table[y=promptContinueFirstBailPr,x expr=\coordindex]{\datatable};
+  \addplot[fill=clr4] table[y=promptContinueFirstBailPr,x expr=\coordindex]{\datatable};
     \addlegendentry{Bail (Bail Prompt Bail-first)}
-  \addplot[fill=clr5, postaction={pattern=north east lines}] table[y=promptContinueFirstUnknownPr,x expr=\coordindex]{\datatable};
+  \addplot[fill=clr5] table[y=promptContinueFirstUnknownPr,x expr=\coordindex]{\datatable};
     \addlegendentry{Unsure (Bail Prompt Bail-first)}
-  \addplot[fill=clr6, postaction={pattern=north east lines}] table[y=promptContinueFirstContinuePr,x expr=\coordindex]{\datatable};
+  \addplot[fill=clr6] table[y=promptContinueFirstContinuePr,x expr=\coordindex]{\datatable};
     \addlegendentry{Continue (Bail Prompt Bail-first)}
-  \addplot[fill=clr7, postaction={pattern=horizontal lines}] table[y=toolBailPr,x expr=\coordindex]{\datatable};
+  \addplot[fill=clr7, postaction={pattern=north east lines}] table[y=toolBailPr,x expr=\coordindex]{\datatable};
     \addlegendentry{Bail (Bail Tool)}
-  \addplot[fill=clr8, postaction={pattern=horizontal lines}] table[y=toolContinuePr,x expr=\coordindex]{\datatable};
+  \addplot[fill=clr8, postaction={pattern=north east lines}] table[y=toolContinuePr,x expr=\coordindex]{\datatable};
     \addlegendentry{Continue (Bail Tool)}
-  \addplot[fill=clr9, postaction={pattern=dots}] table[y=strBailPr,x expr=\coordindex]{\datatable};
+  \addplot[fill=clr9, postaction={pattern=north east lines}] table[y=strBailPr,x expr=\coordindex]{\datatable};
     \addlegendentry{Bail (Bail String)}
-  \addplot[fill=clr10, postaction={pattern=dots}] table[y=strContinuePr,x expr=\coordindex]{\datatable};
+  \addplot[fill=clr10, postaction={pattern=north east lines}] table[y=strContinuePr,x expr=\coordindex]{\datatable};
     \addlegendentry{Continue (Bail String)}
 \end{axis}
 \end{tikzpicture}

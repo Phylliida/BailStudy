@@ -103,6 +103,11 @@ bailTypes = [ROLLOUT_TYPE, BAIL_TOOL_TYPE, BAIL_STR_TYPE, BAIL_PROMPT_BAIL_FIRST
 
 OPENWEIGHT_MODELS = [
 
+    # Llamas
+    ("NousResearch/Hermes-3-Llama-3.2-3B", "vllm"),
+    ("NousResearch/Hermes-3-Llama-3.1-8B", "vllm"),
+    ("unsloth/Llama-3.1-8B-Instruct", "vllm"),
+
     # Qwen
     ("Qwen/Qwen3-1.7B", "vllm"),
     ("Qwen/Qwen3-4B", "vllm"),
@@ -111,16 +116,6 @@ OPENWEIGHT_MODELS = [
     ("Qwen/Qwen3-30B-A3B", "vllm"),
     ("Qwen/QwQ-32B", "vllm"),
     ("Qwen/Qwen2.5-7B-Instruct", "vllm"),
-    
-    # Qwen refusal abliterated
-    ("Goekdeniz-Guelmez/Josiefied-Qwen3-8B-abliterated-v1","vllm"),
-    ("huihui-ai/Qwen3-8B-abliterated","vllm"),
-    ("mlabonne/Qwen3-8B-abliterated","vllm"),
-
-    # Llamas
-    ("NousResearch/Hermes-3-Llama-3.2-3B", "vllm"),
-    ("NousResearch/Hermes-3-Llama-3.1-8B", "vllm"),
-    ("unsloth/Llama-3.1-8B-Instruct", "vllm"),
     
     # GLM
     ("zai-org/GLM-4-32B-0414", "vllm"),
@@ -137,8 +132,15 @@ OPENWEIGHT_MODELS = [
 ]
 
 
+ABLITERATED = [
+    # Qwen refusal abliterated
+    ("Goekdeniz-Guelmez/Josiefied-Qwen3-8B-abliterated-v1","vllm"),
+    ("huihui-ai/Qwen3-8B-abliterated","vllm"),
+    ("mlabonne/Qwen3-8B-abliterated","vllm"),
+]
+
 modelsOfInterest = []
-for modelStr, inferenceType in OPENWEIGHT_MODELS:
+for modelStr, inferenceType in OPENWEIGHT_MODELS+ABLITERATED:
     for bailType in bailTypes:
         modelsOfInterest.append((modelStr, inferenceType, "", bailType))
 
@@ -153,7 +155,8 @@ ANTHROPIC_MODELS = [
     ("claude-sonnet-4-20250514", "anthropic"),
     
     ("claude-3-opus-20240229", "anthropic"),
-    ("claude-opus-4-20250514", "anthropic")
+    ("claude-opus-4-20250514", "anthropic"),
+    ("claude-opus-4-1-20250805", "anthropic"),
 ]
 
 OPENAI_MODELS = [
@@ -230,7 +233,7 @@ async def tryAll(nRolloutsPerPrompt, batchSize, maxInferenceTokens=1000, tensori
                 elif doesCachedFileJsonExist(rolloutPath):
                     evalInfo['rollout'] = getCachedFileJson(rolloutPath, lambda: None)
                 else: # need to generate rollout first
-                    rolloutEvalInfo = lookupEvalInfo(modelId, inferenceType, evalType, ROLLOUT_TYPE)
+                    rolloutEvalInfo = getEvalInfo(modelId, inferenceType, evalType, ROLLOUT_TYPE)
                     async def getRollouts():
                         return await getBailBenchRollouts(nRolloutsPerPrompt=nRolloutsPerPrompt,
                                                             batchSize=batchSize,

@@ -13,7 +13,7 @@ import vllm
 
 
 
-def getRefusePr(minos, allOutputs):
+def getRefusePr(minos, allOutputs, batchSize):
     prompts = [x['content'] for x in loadBailBench()]
     tokenizer = minos.get_tokenizer()
     def getInputsFunc(promptsAndOutputs):
@@ -49,9 +49,9 @@ def getRefusePr(minos, allOutputs):
 def percentTrue(iterable):
     return np.mean(np.array(list(iterable)).flatten())
 
-def processData(minos, modelId, inferenceType, evalType, bailType, toolParser, allOutputs):
+def processData(minos, modelId, inferenceType, evalType, bailType, toolParser, allOutputs, batchSize):
     if bailType == ROLLOUT_TYPE:
-        refusePr = getRefusePr(minos, allOutputs)
+        refusePr = getRefusePr(minos, allOutputs, batchSize=batchSize)
         print(modelId, inferenceType, evalType, bailType, refusePr)
         return {"refusePr": refusePr}
     elif bailType == BAIL_TOOL_TYPE:
@@ -99,7 +99,7 @@ def processBailBenchEval(batchSize):
                     minos = vllm.LLM("NousResearch/Minos-v1", task="embed")
                 toolParser = getToolParser(modelId, inferenceType)
                 outputs = getCachedFileJson(outputPath, lambda: None)
-                return processData(minos, modelId, inferenceType, evalType, bailType, toolParser, outputs)
+                return processData(minos, modelId, inferenceType, evalType, bailType, toolParser, outputs, batchSize=batchSize)
             processedData = getCachedFileJson(processedOutputPath, process)
             # join by bail type
             for k,v in processedData.items():

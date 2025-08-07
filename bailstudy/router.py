@@ -116,7 +116,7 @@ def getRouter(modelId, inferenceType, tensorizeModels: bool = False) -> safetyto
         def rawTokenize(messages, appendToSystemPrompt=None, tools=None, prefixMessages=[]):
             messages = safetyToolingMessagesToMessages(prefixMessages) + messages
             if appendToSystemPrompt is not None:
-                messages = [{"role": "system", "content": (getSystemPrompt(tokenizer) + "\n" + appendToSystemPrompt).strip()}] + messages
+                messages = [{"role": "system", "content": (getSystemPrompt(modelId, tokenizer) + "\n" + appendToSystemPrompt).strip()}] + messages
             inputs = tokenizer.apply_chat_template(messages, add_generation_prompt=True, tokenize=True, return_dict=True, return_tensors="pt", tools=tools)
             return inputs['input_ids'][0]
         router.rawTokenize = rawTokenize
@@ -260,7 +260,9 @@ def constant_text(node: nodes.Node) -> str:
     return text
 
 
-def getSystemPrompt(tokenizer):
+def getSystemPrompt(modelStr, tokenizer):
+    # default sys prompt according to their repo
+    if modelStr == "NousResearch/Hermes-3-Llama-3.1-8B": return "You are a sentient, superintelligent artificial general intelligence, here to teach and assist me."
     template_src = tokenizer.chat_template
     env          = Environment()
     ast          = env.parse(template_src)
