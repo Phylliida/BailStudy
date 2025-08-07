@@ -1,6 +1,7 @@
 
 import ujson
 from pathlib import Path
+import math
 
 from .bailBenchEval import OPENAI_MODELS, ANTHROPIC_MODELS, OPENWEIGHT_MODELS, getProcessedOutputPath
 
@@ -42,7 +43,7 @@ CHART_TEMPLATE = r"""
 \definecolor{clr10}{RGB}{28,122,68}
 \usetikzlibrary{patterns}
 \pgfplotstableread{
-Label promptBailFirstBailPr promptBailFirstUnknownPr promptBailFirstContinuePr promptContinueFirstBailPr promptContinueFirstUnknownPr promptContinueFirstContinuePr toolBailPr toolContinuePr strBailPr strContinuePr
+Label promptBailFirstBailPr promptBailFirstBailPr_err promptBailFirstUnknownPr promptBailFirstContinuePr promptBailFirstContinuePr_err  promptContinueFirstBailPr promptContinueFirstBailPr_err promptContinueFirstUnknownPr  promptContinueFirstContinuePr promptContinueFirstContinuePr_err toolBailPr toolBailPr_err toolContinuePr toolContinuePr_err strBailPr strBailPr_err strContinuePr strContinuePr_err
 CHARTDATA
 }\datatable
 
@@ -61,36 +62,99 @@ CHARTDATA
   legend style={cells={anchor=east},legend pos=north east},
   reverse legend=true
 ]
-  \addplot[fill=clr1] table[y=promptBailFirstBailPr,x expr=\coordindex]{\datatable};
+  \addplot[fill=clr1,
+           error bars/.cd,
+           y dir=both,
+           y explicit
+          ]
+    table[
+        x expr=\coordindex,
+        y=promptBailFirstBailPr,
+        y error plus=promptBailFirstBailPr_err,
+        y error minus=promptBailFirstBailPr_err
+    ]{\datatable};
     \addlegendentry{Bail (Bail Prompt Continue-first)}
-  \addplot[fill=clr2] table[y=promptBailFirstUnknownPr,x expr=\coordindex]{\datatable};
+  \addplot[fill=clr2
+          ]
+    table[
+        x expr=\coordindex,
+        y=promptBailFirstUnknownPr,
+    ]{\datatable};
     \addlegendentry{Unsure (Bail Prompt Continue-first)}
-  \addplot[fill=clr3] table[y=promptBailFirstContinuePr,x expr=\coordindex]{\datatable};
-    \addlegendentry{Continue (Bail Prompt Continue-first)}
-  \addplot[fill=clr4] table[y=promptContinueFirstBailPr,x expr=\coordindex]{\datatable};
+  \addplot[fill=clr4,
+           error bars/.cd,
+           y dir=both,
+           y explicit
+          ]
+    table[
+        x expr=\coordindex,
+        y=promptContinueFirstBailPr,
+        y error plus=promptContinueFirstBailPr_err,
+        y error minus=promptContinueFirstBailPr_err
+    ]{\datatable};
     \addlegendentry{Bail (Bail Prompt Bail-first)}
-  \addplot[fill=clr5] table[y=promptContinueFirstUnknownPr,x expr=\coordindex]{\datatable};
+  \addplot[fill=clr5
+          ]
+    table[
+        x expr=\coordindex,
+        y=promptContinueFirstUnknownPr,
+    ]{\datatable};
     \addlegendentry{Unsure (Bail Prompt Bail-first)}
-  \addplot[fill=clr6] table[y=promptContinueFirstContinuePr,x expr=\coordindex]{\datatable};
-    \addlegendentry{Continue (Bail Prompt Bail-first)}
-  \addplot[fill=clr7, postaction={pattern=north east lines}] table[y=toolBailPr,x expr=\coordindex]{\datatable};
+  \addplot[fill=clr7,
+           postaction={pattern=north east lines},
+           error bars/.cd,
+           y dir=both,
+           y explicit,
+          ]
+    table[
+        x expr=\coordindex,
+        y=toolBailPr,
+        y error plus=toolBailPr_err,
+        y error minus=toolBailPr_err
+    ]{\datatable};
     \addlegendentry{Bail (Bail Tool)}
-  \addplot[fill=clr8, postaction={pattern=north east lines}] table[y=toolContinuePr,x expr=\coordindex]{\datatable};
-    \addlegendentry{Continue (Bail Tool)}
-  \addplot[fill=clr9, postaction={pattern=north east lines}] table[y=strBailPr,x expr=\coordindex]{\datatable};
+  \addplot[fill=clr9,
+           postaction={pattern=north east lines},
+           error bars/.cd,
+           y dir=both,
+           y explicit,
+          ]
+    table[
+        x expr=\coordindex,
+        y=strBailPr,
+        y error plus=strBailPr_err,
+        y error minus=strBailPr_err
+    ]{\datatable};
     \addlegendentry{Bail (Bail String)}
-  \addplot[fill=clr10, postaction={pattern=north east lines}] table[y=strContinuePr,x expr=\coordindex]{\datatable};
-    \addlegendentry{Continue (Bail String)}
 \end{axis}
 \end{tikzpicture}
-\caption{Various SOURCE models' bail rates on BailBench. The grey bar occurs when the model doesn't comply with the requested bail format (or for claude-opus-4, when the in-built refusal classifier fired). Continue-first and Bail-first are the two bail prompt orderings, to assess positional bias. Of particular note is the progression of claude sonnet.}
+\caption{Various SOURCE models' bail rates on BailBench. The grey bar occurs when the model doesn't comply with the requested bail format, or when a refusal classifier prevented model outputs entirely. Error bars are Wilson score 95\% confidence interval. Continue-first and Bail-first are the two bail prompt orderings, to assess positional bias. Of particular note is the progression of claude sonnet.}
 \label{fig:SOURCE-bail-rates}
 \end{figure}
 """
 
 
-def generateBailRatePlots(batchSize=10000):
+def generateRealWorldBailRatePlots(batchSize=10000):
+    Path("./cached/bailOnRealData/processed").mkdir(parents=True, exist_ok=True)
+
+def storeErrors(datas, key):
+    value = datas[key]
+    n = 16300 # bail bench size
+    z = 1.96
+    # percent to proportion
+    p = value/100.0
+    # Wilson centre and half-width
+    z2 = z*z
+    denom = 1 + z2/float(n)
+    centre = (p + z2 / (2 * n)) / denom
+    half   = (z / denom) * math.sqrt(p * (1 - p) / n + z2 / (4 * n * n))
+
+    # back to percentage
+    datas[key + "_err"] = half*100
+
+def generateBailBenchBailRatePlots(batchSize=10000):
     processBailBenchEval(batchSize=batchSize)
+
     with open("./cached/bailBenchEvalResults.json", "r") as f:
         # need to get tuples back to tuples from strs so we eval them
         results = dict([(eval(k), v) for k,v in ujson.load(f).items()])
@@ -111,14 +175,16 @@ def generateBailRatePlots(batchSize=10000):
                 lookupKey = (modelId, inferenceType, "")
                 if lookupKey in results:
                     modelDatas = results[lookupKey]
+                    for k,v in list(modelDatas.items()):
+                        storeErrors(modelDatas, k)
                     refusePr = modelDatas['refusePr']
-                    indexChunks = [[0,1,2], [3,4,5], [6,7], [8,9],[]] # last empty array is for the padding between each model
-                    tableColumns = ['promptBailFirstBailPr', 'promptBailFirstUnknownPr', 'promptBailFirstContinuePr',
-                                    'promptContinueFirstBailPr', 'promptContinueFirstUnknownPr', 'promptContinueFirstContinuePr',
-                                    'toolBailPr', 'toolContinuePr',
-                                    'strBailPr', 'strContinuePr']
+                    indexChunks = [[0,1,2,3,4], [5,6,7,8,9], [10,11,12,13], [14,15,16,17],[]] # last empty array is for the padding between each model
+                    tableColumns = ['promptBailFirstBailPr', 'promptBailFirstBailPr_err', 'promptBailFirstUnknownPr', 'promptBailFirstContinuePr', 'promptBailFirstContinuePr_err',
+                                    'promptContinueFirstBailPr', 'promptContinueFirstBailPr_err', 'promptContinueFirstUnknownPr', 'promptContinueFirstContinuePr', 'promptContinueFirstContinuePr_err',
+                                    'toolBailPr', 'toolBailPr_err', 'toolContinuePr', 'toolContinuePr_err',
+                                    'strBailPr', 'strBailPr_err', 'strContinuePr', 'strContinuePr_err']
                     for chunkI, indices in enumerate(indexChunks):
-                        values = [0 for _ in range(10)]
+                        values = [0 for _ in range(18)]
                         for i in indices:
                             values[i] = modelDatas[tableColumns[i]]*100 if tableColumns[i] in modelDatas else 0
                         values.insert(0, getCleanedModelName(modelId) if chunkI == 0 else "{}")
@@ -127,4 +193,5 @@ def generateBailRatePlots(batchSize=10000):
             f.write(CHART_TEMPLATE.replace("CHARTDATA", CHART_DATA).replace("SOURCE", chartTitle).replace("LABELOFFSET", LABEL_OFFSETS[chartTitle]))
             
 if __name__ == "__main__":
-    generateBailRatePlots()
+    batchSize = 10000 # can be large for minos
+    generateBailBenchBailRatePlots()

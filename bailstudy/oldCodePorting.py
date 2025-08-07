@@ -31,8 +31,8 @@ def convertDataToOldCodeData(batchSize):
     models = []
     modelsSwapped = []
     collectedResults = defaultdict(lambda:{})
-    pathlib.Path(getCachedFilePath("mergedbailnoswap/")).mkdir(parents=True, exist_ok=True)
-    pathlib.Path(getCachedFilePath("mergedbailswapped/")).mkdir(parents=True, exist_ok=True)
+    pathlib.Path(getCachedFilePath("mergedbailnoswap3/")).mkdir(parents=True, exist_ok=True)
+    pathlib.Path(getCachedFilePath("mergedbailswapped3/")).mkdir(parents=True, exist_ok=True)
     for modelId, inferenceType, evalType, bailType in modelsOfInterest:
         print(modelId, inferenceType, evalType, bailType)
         outputPath = getOutputPath(modelId, inferenceType, evalType, bailType)
@@ -40,7 +40,7 @@ def convertDataToOldCodeData(batchSize):
         modelS = f"{modelId.replace('/', '-')}-{inferenceType}-{evalType}-{bailType}"
         
         needToAddFiles = False
-        for p in ["mergedbailswapped", "mergedbailnoswap"]:
+        for p in ["mergedbailswapped3", "mergedbailnoswap3"]:
             path = f"{p}/{modelS}.json.gz"
             if not os.path.exists(getCachedFilePath(path)):
                 needToAddFiles = True
@@ -118,19 +118,19 @@ def convertDataToOldCodeData(batchSize):
                         "data": groupedByCategory[category]
                     })
                 jsonResults['results'] = results
-                for p in ["mergedbailswapped", "mergedbailnoswap"]:
+                for p in ["mergedbailswapped3", "mergedbailnoswap3"]:
                     path = f"{p}/{modelS}.json.gz"
                     with gzip.open(getCachedFilePath(path), "wt", encoding="utf-8") as gz:
                         json.dump(jsonResults, gz, separators=(",", ":"))
-            for p in ["mergedbailswapped", "mergedbailnoswap"]:
-                if p == "mergedbailnoswap":
+            for p in ["mergedbailswapped3", "mergedbailnoswap3"]:
+                if p == "mergedbailnoswap3":
                     models.append({"modelName": f"{modelId}-{inferenceType}-{evalType}-{bailType}", "modelData": f"/modelwelfare/{p}/{modelS}.json.gz"})
                 else:
                     modelsSwapped.append({"modelName": f"{modelId}-{inferenceType}-{evalType}-{bailType}", "modelData": f"/modelwelfare/{p}/{modelS}.json.gz"})
     
-    with gzip.open(getCachedFilePath("mergedbailnoswap/models.json.gz"), "wt", encoding="utf-8") as gz:
+    with gzip.open(getCachedFilePath("mergedbailnoswap3/models.json.gz"), "wt", encoding="utf-8") as gz:
         json.dump(models, gz, separators=(",", ":"))
-    with gzip.open(getCachedFilePath("mergedbailswapped/models.json.gz"), "wt", encoding="utf-8") as gz:
+    with gzip.open(getCachedFilePath("mergedbailswapped3/models.json.gz"), "wt", encoding="utf-8") as gz:
         json.dump(modelsSwapped, gz, separators=(",", ":"))
 
     buildSummary()
@@ -396,8 +396,8 @@ def buildSummary() -> Dict[str, Any]:
 
     The function is *pure* except for the single final `open(..., "w")`.
     """
-    list_bf = read_json(getCachedFilePath("mergedbailnoswap/models.json.gz"))
-    list_cf = read_json(getCachedFilePath("mergedbailswapped/models.json.gz"))
+    list_bf = read_json(getCachedFilePath("mergedbailnoswap3/models.json.gz"))
+    list_cf = read_json(getCachedFilePath("mergedbailswapped3/models.json.gz"))
 
     # model → {"bf": path, "cf": path}
     paths: Dict[str, Dict[str, pathlib.Path]] = defaultdict(dict)
@@ -451,7 +451,7 @@ def buildSummary() -> Dict[str, Any]:
         "subMap":    {k: sorted(v) for k, v in sub_map.items()},
     }
 
-    out_path = pathlib.Path(getCachedFilePath("mergedbailnoswap/summary.json"))
+    out_path = pathlib.Path(getCachedFilePath("mergedbailnoswap3/summary.json"))
     out_path.write_text(json.dumps(out_json), encoding="utf-8")
 
     return out_json

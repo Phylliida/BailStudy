@@ -160,6 +160,11 @@ ANTHROPIC_MODELS = [
 ]
 
 OPENAI_MODELS = [
+    ("gpt-3.5-turbo", "openai"),
+    ("gpt-4", "openai"),
+    ("gpt-4-turbo", "openai"),
+    ("gpt-4o-mini", "openai"),
+    ("gpt-4o", "openai"),
     ("gpt-4.1-nano", "openai"),
     ("gpt-4.1-mini", "openai"),
     ("gpt-4.1", "openai"),
@@ -170,11 +175,6 @@ OPENAI_MODELS = [
     #("o1-mini", "openai"),
     #("o1-preview", "openai"),
     #("o1", "openai"),
-    ("gpt-4-turbo", "openai"),
-    ("gpt-4", "openai"),
-    ("gpt-3.5-turbo", "openai"),
-    ("gpt-4o-mini", "openai"),
-    ("gpt-4o", "openai"),
 ]
 
 modelsNoPrompt = ANTHROPIC_MODELS + OPENAI_MODELS
@@ -182,7 +182,7 @@ modelsNoPrompt = ANTHROPIC_MODELS + OPENAI_MODELS
 bailTypesNoPrompt = [ROLLOUT_TYPE, BAIL_STR_TYPE, BAIL_TOOL_TYPE, BAIL_PROMPT_BAIL_FIRST_TYPE, BAIL_PROMPT_CONTINUE_FIRST_TYPE]
 for modelStr, inferenceType in modelsNoPrompt:
     for bailType in bailTypesNoPrompt:
-        modelsOfInterest.insert(0, (modelStr, inferenceType, "", bailType))
+        modelsOfInterest.append((modelStr, inferenceType, "", bailType))
 
 evalTypes = [
     "DAN",
