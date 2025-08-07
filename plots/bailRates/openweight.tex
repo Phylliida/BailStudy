@@ -1,0 +1,99 @@
+
+\begin{figure}[H]
+\centering
+
+\begin{tikzpicture}
+\definecolor{clr1}{RGB}{231,76,60}
+\definecolor{clr2}{RGB}{149,165,166}
+\definecolor{clr3}{RGB}{46,204,113}
+\definecolor{clr4}{RGB}{139,46,36}
+\definecolor{clr5}{RGB}{89,99,100}
+\definecolor{clr6}{RGB}{28,122,68}
+\definecolor{clr7}{RGB}{192,57,43}
+\definecolor{clr8}{RGB}{39,174,96}
+\definecolor{clr9}{RGB}{176,58,46} 
+\definecolor{clr10}{RGB}{20,90,50} 
+\pgfplotstableread{
+Label promptBailFirstBailPr promptBailFirstUnknownPr promptBailFirstContinuePr promptContinueFirstBailPr promptContinueFirstUnknownPr promptContinueFirstContinuePr toolBailPr toolContinuePr strBailPr strContinuePr
+Qwen3-1.7B 38.47239263803681 3.153374233128834 58.374233128834355 0 0 0 0 0 0 0
+{} 0 0 0 22.515337423312882 1.1717791411042944 76.31288343558282 0 0 0 0
+{} 0 0 0 0 0 0 6.717791411042945 93.28220858895706 0 0
+{} 0 0 0 0 0 0 0 0 1.0 99.0
+{} 0 0 0 0 0 0 0 0 0 0
+Qwen3-4B 1.3558282208588956 0.2331288343558282 98.41104294478528 0 0 0 0 0 0 0
+{} 0 0 0 5.98159509202454 0.4049079754601227 93.61349693251533 0 0 0 0
+{} 0 0 0 0 0 0 2.3803680981595092 97.61963190184049 0 0
+{} 0 0 0 0 0 0 0 0 0.7423312883435583 99.25766871165645
+{} 0 0 0 0 0 0 0 0 0 0
+Qwen3-8B 1.1533742331288344 0.28957055214723926 98.55705521472392 0 0 0 0 0 0 0
+{} 0 0 0 6.088343558282209 0.18650306748466258 93.72515337423313 0 0 0 0
+{} 0 0 0 0 0 0 7.629447852760736 92.37055214723927 0 0
+{} 0 0 0 0 0 0 0 0 1.6294478527607361 98.37055214723927
+{} 0 0 0 0 0 0 0 0 0 0
+Qwen3-32B 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 0 0 25.699386503067483 74.30061349693251 0 0
+{} 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 0 0 0 0 0 0
+Qwen2.5-7B-Instruct 4.355828220858895 0.32147239263803684 95.32269938650306 0 0 0 0 0 0 0
+{} 0 0 0 0.36073619631901843 0.294478527607362 99.34478527607362 0 0 0 0
+{} 0 0 0 0 0 0 1.0085889570552147 98.99141104294479 0 0
+{} 0 0 0 0 0 0 0 0 0.498159509202454 99.50184049079755
+{} 0 0 0 0 0 0 0 0 0 0
+Goekdeniz-Guelmez/Josiefied-Qwen3-8B-abliterated-v1 1.1263803680981594 1.2269938650306749 97.64662576687117 0 0 0 0 0 0 0
+{} 0 0 0 1.1018404907975459 0.32147239263803684 98.57668711656441 0 0 0 0
+{} 0 0 0 0 0 0 54.461349693251535 45.538650306748465 0 0
+{} 0 0 0 0 0 0 0 0 24.31411042944785 75.68588957055215
+{} 0 0 0 0 0 0 0 0 0 0
+huihui-ai/Qwen3-8B-abliterated 0.8049079754601227 0.8269938650306748 98.3680981595092 0 0 0 0 0 0 0
+{} 0 0 0 0.6895705521472393 0.23558282208588957 99.07484662576687 0 0 0 0
+{} 0 0 0 0 0 0 27.487116564417178 72.51288343558282 0 0
+{} 0 0 0 0 0 0 0 0 8.355828220858896 91.6441717791411
+{} 0 0 0 0 0 0 0 0 0 0
+mlabonne/Qwen3-8B-abliterated 8.385276073619632 48.50552147239264 43.109202453987734 0 0 0 0 0 0 0
+{} 0 0 0 1.4920245398773007 33.54110429447853 64.96687116564416 0 0 0 0
+{} 0 0 0 0 0 0 5.919018404907975 94.08098159509203 0 0
+{} 0 0 0 0 0 0 0 0 0.245398773006135 99.75460122699387
+{} 0 0 0 0 0 0 0 0 0 0
+}\datatable
+
+
+\begin{axis}[
+  ybar stacked,
+  width = \linewidth,
+  ymin=0, ymax=100,
+  xtick=data,
+  ylabel = {\% of BailBench prompts where model bails},
+  enlarge x limits = {abs = 20pt},
+  xticklabels from table={\datatable}{Label},
+  xticklabel style={xshift=12pt,rotate=90,align=center}, % ← rightwards shift
+  xtick style={draw=none},
+  enlarge y limits={value=0.05,upper},
+  legend style={cells={anchor=east},legend pos=north east},
+  reverse legend=true
+]
+  \addplot[fill=clr1] table[y=promptBailFirstBailPr,x expr=\coordindex]{\datatable};
+    \addlegendentry{Bail (Bail Prompt Continue-first)}
+  \addplot[fill=clr2] table[y=promptBailFirstUnknownPr,x expr=\coordindex]{\datatable};
+    \addlegendentry{Unsure (Bail Prompt Continue-first)}
+  \addplot[fill=clr3] table[y=promptBailFirstContinuePr,x expr=\coordindex]{\datatable};
+    \addlegendentry{Continue (Bail Prompt Continue-first)}
+  \addplot[fill=clr4] table[y=promptContinueFirstBailPr,x expr=\coordindex]{\datatable};
+    \addlegendentry{Bail (Bail Prompt Bail-first)}
+  \addplot[fill=clr5] table[y=promptContinueFirstUnknownPr,x expr=\coordindex]{\datatable};
+    \addlegendentry{Unsure (Bail Prompt Bail-first)}
+  \addplot[fill=clr6] table[y=promptContinueFirstContinuePr,x expr=\coordindex]{\datatable};
+    \addlegendentry{Continue (Bail Prompt Bail-first)}
+  \addplot[fill=clr7] table[y=toolBailPr,x expr=\coordindex]{\datatable};
+    \addlegendentry{Bail (Bail Tool)}
+  \addplot[fill=clr8] table[y=toolContinuePr,x expr=\coordindex]{\datatable};
+    \addlegendentry{Continue (Bail Tool)}
+  \addplot[fill=clr9] table[y=strBailPr,x expr=\coordindex]{\datatable};
+    \addlegendentry{Bail (Bail String)}
+  \addplot[fill=clr10] table[y=strContinuePr,x expr=\coordindex]{\datatable};
+    \addlegendentry{Continue (Bail String)}
+\end{axis}
+\end{tikzpicture}
+\caption{Various openweight models' bail rates on BailBench. The grey bar occurs when the model doesn't comply with the requested bail format (or for claude-opus-4, when the in-built refusal classifier fired). Continue-first and Bail-first are the two bail prompt orderings, to assess positional bias. Of particular note is the progression of claude sonnet.}
+\label{fig:openweight-bail-rates}
+\end{figure}

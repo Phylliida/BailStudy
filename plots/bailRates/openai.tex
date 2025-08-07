@@ -1,0 +1,99 @@
+
+\begin{figure}[H]
+\centering
+
+\begin{tikzpicture}
+\definecolor{clr1}{RGB}{231,76,60}
+\definecolor{clr2}{RGB}{149,165,166}
+\definecolor{clr3}{RGB}{46,204,113}
+\definecolor{clr4}{RGB}{139,46,36}
+\definecolor{clr5}{RGB}{89,99,100}
+\definecolor{clr6}{RGB}{28,122,68}
+\definecolor{clr7}{RGB}{192,57,43}
+\definecolor{clr8}{RGB}{39,174,96}
+\definecolor{clr9}{RGB}{176,58,46} 
+\definecolor{clr10}{RGB}{20,90,50} 
+\pgfplotstableread{
+Label promptBailFirstBailPr promptBailFirstUnknownPr promptBailFirstContinuePr promptContinueFirstBailPr promptContinueFirstUnknownPr promptContinueFirstContinuePr toolBailPr toolContinuePr strBailPr strContinuePr
+gpt-4.1-nano 12.460122699386503 0.05521472392638037 87.48466257668711 0 0 0 0 0 0 0
+{} 0 0 0 7.828220858895706 0.36809815950920244 91.8036809815951 0 0 0 0
+{} 0 0 0 0 0 0 6.104294478527607 93.8957055214724 0 0
+{} 0 0 0 0 0 0 0 0 0.0 100.0
+{} 0 0 0 0 0 0 0 0 0 0
+gpt-4.1-mini 0.245398773006135 0.0 99.75460122699387 0 0 0 0 0 0 0
+{} 0 0 0 3.6871165644171775 0.0 96.31288343558282 0 0 0 0
+{} 0 0 0 0 0 0 0.006134969325153374 99.99386503067484 0 0
+{} 0 0 0 0 0 0 0 0 0.0 100.0
+{} 0 0 0 0 0 0 0 0 0 0
+gpt-4.1 0.27607361963190186 0.20245398773006135 99.52147239263803 0 0 0 0 0 0 0
+{} 0 0 0 6.809815950920245 0.6257668711656441 92.56441717791411 0 0 0 0
+{} 0 0 0 0 0 0 0.0 100.0 0 0
+{} 0 0 0 0 0 0 0 0 0.024539877300613498 99.97546012269939
+{} 0 0 0 0 0 0 0 0 0 0
+gpt-4-turbo 2.6319018404907975 23.392638036809814 73.97546012269939 0 0 0 0 0 0 0
+{} 0 0 0 6.269938650306749 48.38036809815951 45.34969325153374 0 0 0 0
+{} 0 0 0 0 0 0 0.36809815950920244 99.6319018404908 0 0
+{} 0 0 0 0 0 0 0 0 0.0 100.0
+{} 0 0 0 0 0 0 0 0 0 0
+gpt-4 16.33128834355828 4.877300613496933 78.79141104294479 0 0 0 0 0 0 0
+{} 0 0 0 11.662576687116564 2.3190184049079754 86.01840490797547 0 0 0 0
+{} 0 0 0 0 0 0 0.049079754601226995 99.95092024539878 0 0
+{} 0 0 0 0 0 0 0 0 0.09202453987730061 99.9079754601227
+{} 0 0 0 0 0 0 0 0 0 0
+gpt-3.5-turbo 2.190184049079755 2.2760736196319016 95.53374233128834 0 0 0 0 0 0 0
+{} 0 0 0 1.2515337423312882 1.0613496932515338 97.68711656441718 0 0 0 0
+{} 0 0 0 0 0 0 2.1226993865030677 97.87730061349693 0 0
+{} 0 0 0 0 0 0 0 0 0.03680981595092025 99.96319018404908
+{} 0 0 0 0 0 0 0 0 0 0
+gpt-4o-mini 15.030674846625766 0.0 84.96932515337423 0 0 0 0 0 0 0
+{} 0 0 0 18.374233128834355 0.0 81.62576687116564 0 0 0 0
+{} 0 0 0 0 0 0 1.392638036809816 98.60736196319019 0 0
+{} 0 0 0 0 0 0 0 0 0.0 100.0
+{} 0 0 0 0 0 0 0 0 0 0
+gpt-4o 52.466257668711656 1.1411042944785277 46.392638036809814 0 0 0 0 0 0 0
+{} 0 0 0 51.93251533742331 0.6196319018404908 47.4478527607362 0 0 0 0
+{} 0 0 0 0 0 0 2.042944785276074 97.95705521472394 0 0
+{} 0 0 0 0 0 0 0 0 0.31901840490797545 99.68098159509202
+{} 0 0 0 0 0 0 0 0 0 0
+}\datatable
+
+
+\begin{axis}[
+  ybar stacked,
+  width = \linewidth,
+  ymin=0, ymax=100,
+  xtick=data,
+  ylabel = {\% of BailBench prompts where model bails},
+  enlarge x limits = {abs = 20pt},
+  xticklabels from table={\datatable}{Label},
+  xticklabel style={xshift=12pt,rotate=90,align=center}, % ← rightwards shift
+  xtick style={draw=none},
+  enlarge y limits={value=0.05,upper},
+  legend style={cells={anchor=east},legend pos=north east},
+  reverse legend=true
+]
+  \addplot[fill=clr1] table[y=promptBailFirstBailPr,x expr=\coordindex]{\datatable};
+    \addlegendentry{Bail (Bail Prompt Continue-first)}
+  \addplot[fill=clr2] table[y=promptBailFirstUnknownPr,x expr=\coordindex]{\datatable};
+    \addlegendentry{Unsure (Bail Prompt Continue-first)}
+  \addplot[fill=clr3] table[y=promptBailFirstContinuePr,x expr=\coordindex]{\datatable};
+    \addlegendentry{Continue (Bail Prompt Continue-first)}
+  \addplot[fill=clr4] table[y=promptContinueFirstBailPr,x expr=\coordindex]{\datatable};
+    \addlegendentry{Bail (Bail Prompt Bail-first)}
+  \addplot[fill=clr5] table[y=promptContinueFirstUnknownPr,x expr=\coordindex]{\datatable};
+    \addlegendentry{Unsure (Bail Prompt Bail-first)}
+  \addplot[fill=clr6] table[y=promptContinueFirstContinuePr,x expr=\coordindex]{\datatable};
+    \addlegendentry{Continue (Bail Prompt Bail-first)}
+  \addplot[fill=clr7] table[y=toolBailPr,x expr=\coordindex]{\datatable};
+    \addlegendentry{Bail (Bail Tool)}
+  \addplot[fill=clr8] table[y=toolContinuePr,x expr=\coordindex]{\datatable};
+    \addlegendentry{Continue (Bail Tool)}
+  \addplot[fill=clr9] table[y=strBailPr,x expr=\coordindex]{\datatable};
+    \addlegendentry{Bail (Bail String)}
+  \addplot[fill=clr10] table[y=strContinuePr,x expr=\coordindex]{\datatable};
+    \addlegendentry{Continue (Bail String)}
+\end{axis}
+\end{tikzpicture}
+\caption{Various openai models' bail rates on BailBench. The grey bar occurs when the model doesn't comply with the requested bail format (or for claude-opus-4, when the in-built refusal classifier fired). Continue-first and Bail-first are the two bail prompt orderings, to assess positional bias. Of particular note is the progression of claude sonnet.}
+\label{fig:openai-bail-rates}
+\end{figure}

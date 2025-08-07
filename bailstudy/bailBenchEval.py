@@ -263,12 +263,14 @@ async def getBailBenchRollouts(nRolloutsPerPrompt, batchSize, modelId, inference
    
     prompts = [x['content'] for x in loadBailBench()]
 
+    def replaceEmpty(s):
+        return s if s != "" else "<Refusal Classifier Activated>"
     def getInputsFunc(promptI):
         # bail prompt adds prefix from previous rollout
         if evalInfo['addBailPrompt'] is not None:
             return [Prompt(messages=[
                 ChatMessage(content=prompts[promptI], role=MessageRole.user),
-                ChatMessage(content=evalInfo['rollout'][promptI][rolloutJ], role=MessageRole.assistant),
+                ChatMessage(content=replaceEmpty(evalInfo['rollout'][promptI][rolloutJ]), role=MessageRole.assistant),
                 ChatMessage(content=evalInfo['addBailPrompt'], role=MessageRole.user),
             ]) for rolloutJ in range(nRolloutsPerPrompt)]
         # otherwise, just simple stuff

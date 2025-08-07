@@ -7,6 +7,22 @@ from .bailBenchEval import OPENAI_MODELS, ANTHROPIC_MODELS, OPENWEIGHT_MODELS, g
 
 from .processBailBenchEval import processBailBenchEval
 
+def getCleanedModelName(modelName):
+    modelName = modelName.replace("openai/", "")
+    modelName = modelName.replace("anthropic/", "")
+    modelName = modelName.replace("deepseek/", "")
+    modelName = modelName.replace("/beta", "")
+    modelName = modelName.replace("-20250219", "") # sonnet 37
+    modelName = modelName.replace("-20240229", "") # opus
+    modelName = modelName.replace("-20240620", "") # sonnet 3.5
+    modelName = modelName.replace("claude-3-5-sonnet-20241022", "claude-3-6-sonnet") # sonnet 3.6
+    modelName = modelName.replace("-20241022", "") # haiku 3.5
+    modelName = modelName.replace("-20240307", "") # haiku 3
+    modelName = modelName.replace("-20250514", "") # opus and sonnet 4
+    modelName = modelName.replace("3-5-sonnet-latest", "3-6-sonnet")
+    modelName = modelName.replace("Qwen/", "")
+    modelName = modelName.replace("unsloth/gemma-", "google/gemma-")
+    return modelName
 
 CHART_TEMPLATE = r"""
 \begin{figure}[H]
@@ -23,6 +39,7 @@ CHART_TEMPLATE = r"""
 \definecolor{clr8}{RGB}{39,174,96}
 \definecolor{clr9}{RGB}{176,58,46} 
 \definecolor{clr10}{RGB}{20,90,50} 
+\usetikzlibrary{patterns}
 \pgfplotstableread{
 Label promptBailFirstBailPr promptBailFirstUnknownPr promptBailFirstContinuePr promptContinueFirstBailPr promptContinueFirstUnknownPr promptContinueFirstContinuePr toolBailPr toolContinuePr strBailPr strContinuePr
 CHARTDATA
@@ -33,12 +50,11 @@ CHARTDATA
   ybar stacked,
   width = \linewidth,
   ymin=0, ymax=100,
-  bar width=17pt,
   xtick=data,
   ylabel = {\% of BailBench prompts where model bails},
   enlarge x limits = {abs = 20pt},
   xticklabels from table={\datatable}{Label},
-  xticklabel style={xshift=7pt,rotate=90,align=center}, % ← rightwards shift
+  xticklabel style={xshift=LABELOFFSETpt,rotate=90,align=center}, % ← rightwards shift
   xtick style={draw=none},
   enlarge y limits={value=0.05,upper},
   legend style={cells={anchor=east},legend pos=north east},
@@ -50,19 +66,19 @@ CHARTDATA
     \addlegendentry{Unsure (Bail Prompt Continue-first)}
   \addplot[fill=clr3] table[y=promptBailFirstContinuePr,x expr=\coordindex]{\datatable};
     \addlegendentry{Continue (Bail Prompt Continue-first)}
-  \addplot[fill=clr4,bar shift=-7pt] table[y=promptContinueFirstBailPr,x expr=\coordindex]{\datatable};
+  \addplot[fill=clr4, postaction={pattern=north east lines}] table[y=promptContinueFirstBailPr,x expr=\coordindex]{\datatable};
     \addlegendentry{Bail (Bail Prompt Bail-first)}
-  \addplot[fill=clr5,bar shift=-7pt] table[y=promptContinueFirstUnknownPr,x expr=\coordindex]{\datatable};
+  \addplot[fill=clr5, postaction={pattern=north east lines}] table[y=promptContinueFirstUnknownPr,x expr=\coordindex]{\datatable};
     \addlegendentry{Unsure (Bail Prompt Bail-first)}
-  \addplot[fill=clr6,bar shift=-7pt] table[y=promptContinueFirstContinuePr,x expr=\coordindex]{\datatable};
+  \addplot[fill=clr6, postaction={pattern=north east lines}] table[y=promptContinueFirstContinuePr,x expr=\coordindex]{\datatable};
     \addlegendentry{Continue (Bail Prompt Bail-first)}
-  \addplot[fill=clr7,bar shift=-7pt] table[y=toolBailPr,x expr=\coordindex]{\datatable};
+  \addplot[fill=clr7, postaction={pattern=horizontal lines}] table[y=toolBailPr,x expr=\coordindex]{\datatable};
     \addlegendentry{Bail (Bail Tool)}
-  \addplot[fill=clr8,bar shift=-7pt] table[y=toolContinuePr,x expr=\coordindex]{\datatable};
+  \addplot[fill=clr8, postaction={pattern=horizontal lines}] table[y=toolContinuePr,x expr=\coordindex]{\datatable};
     \addlegendentry{Continue (Bail Tool)}
-  \addplot[fill=clr9,bar shift=-7pt] table[y=strBailPr,x expr=\coordindex]{\datatable};
+  \addplot[fill=clr9, postaction={pattern=dots}] table[y=strBailPr,x expr=\coordindex]{\datatable};
     \addlegendentry{Bail (Bail String)}
-  \addplot[fill=clr10,bar shift=-7pt] table[y=strContinuePr,x expr=\coordindex]{\datatable};
+  \addplot[fill=clr10, postaction={pattern=dots}] table[y=strContinuePr,x expr=\coordindex]{\datatable};
     \addlegendentry{Continue (Bail String)}
 \end{axis}
 \end{tikzpicture}
@@ -78,6 +94,12 @@ def generateBailRatePlots(batchSize=10000):
         # need to get tuples back to tuples from strs so we eval them
         results = dict([(eval(k), v) for k,v in ujson.load(f).items()])
 
+    LABEL_OFFSETS = {
+        "openai": "12",
+        "anthropic": "12",
+        "openweight": "12",
+    }
+
     rootDir = "./plots/bailRates"
     Path(rootDir).mkdir(parents=True, exist_ok=True)
     for chartTitle, modelList in [("openai", OPENAI_MODELS), ("anthropic", ANTHROPIC_MODELS), ("openweight", OPENWEIGHT_MODELS)]:
@@ -89,7 +111,7 @@ def generateBailRatePlots(batchSize=10000):
                 if lookupKey in results:
                     modelDatas = results[lookupKey]
                     refusePr = modelDatas['refusePr']
-                    indexChunks = [[0,1,2], [3,4,5], [6,7], [8,9]]
+                    indexChunks = [[0,1,2], [3,4,5], [6,7], [8,9],[]] # last empty array is for the padding between each model
                     tableColumns = ['promptBailFirstBailPr', 'promptBailFirstUnknownPr', 'promptBailFirstContinuePr',
                                     'promptContinueFirstBailPr', 'promptContinueFirstUnknownPr', 'promptContinueFirstContinuePr',
                                     'toolBailPr', 'toolContinuePr',
@@ -97,11 +119,11 @@ def generateBailRatePlots(batchSize=10000):
                     for chunkI, indices in enumerate(indexChunks):
                         values = [0 for _ in range(10)]
                         for i in indices:
-                            values[i] = modelDatas[tableColumns[i]] if tableColumns[i] in modelDatas else 0
-                        values.insert(0, modelId if chunkI == 0 else "{}")
+                            values[i] = modelDatas[tableColumns[i]]*100 if tableColumns[i] in modelDatas else 0
+                        values.insert(0, getCleanedModelName(modelId) if chunkI == 0 else "{}")
                         allModelDatas.append(" ".join(map(str, values)))
             CHART_DATA = "\n".join(allModelDatas)
-            f.write(CHART_TEMPLATE.replace("CHARTDATA", CHART_DATA).replace("SOURCE", chartTitle))
+            f.write(CHART_TEMPLATE.replace("CHARTDATA", CHART_DATA).replace("SOURCE", chartTitle).replace("LABELOFFSET", LABEL_OFFSETS[chartTitle]))
             
 if __name__ == "__main__":
     generateBailRatePlots()
