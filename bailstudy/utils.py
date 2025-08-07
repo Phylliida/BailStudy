@@ -13,17 +13,6 @@ import safetytooling
 import inspect
 from safetytooling.data_models import ChatMessage, MessageRole
 
-## Stuff for keypoller support on windows
-isWindows = False
-try:
-    from win32api import STD_INPUT_HANDLE
-    from win32console import GetStdHandle, KEY_EVENT, ENABLE_ECHO_INPUT, ENABLE_LINE_INPUT, ENABLE_PROCESSED_INPUT
-    isWindows = True
-except ImportError as e:
-    import sys
-    import select
-    import termios
-
 def getHfFile(repoId, fileName):
     return hf_hub_download(
         repo_id   = repoId,
@@ -110,73 +99,6 @@ def getCachedFileJson(fileName, lambdaIfNotExist):
             os.remove(cachedInProgressPath)
 
 
-
-# this is needed because vllm doesn't like being interrupted with ctrl-c
-# so I listen for the c key and if it's sent then we can interrupt
-class KeyPoller():
-    def __init__(self, noCancel=False):
-        self.noCancel = noCancel
-
-    def __enter__(self):
-        if self.noCancel: return self
-        global isWindows
-        if isWindows:
-            self.readHandle = GetStdHandle(STD_INPUT_HANDLE)
-            self.readHandle.SetConsoleMode(ENABLE_LINE_INPUT|ENABLE_ECHO_INPUT|ENABLE_PROCESSED_INPUT)
-            
-            self.curEventLength = 0
-            self.curKeysLength = 0
-            
-            self.capturedChars = []
-        else:
-            # Save the terminal settings
-            self.fd = sys.stdin.fileno()
-            self.new_term = termios.tcgetattr(self.fd)
-            self.old_term = termios.tcgetattr(self.fd)
-            
-            # New terminal setting unbuffered
-            self.new_term[3] = (self.new_term[3] & ~termios.ICANON & ~termios.ECHO)
-            termios.tcsetattr(self.fd, termios.TCSAFLUSH, self.new_term)
-            
-        return self
-    
-    def __exit__(self, type, value, traceback):
-        if self.noCancel: return
-        if isWindows:
-            pass
-        else:
-            termios.tcsetattr(self.fd, termios.TCSAFLUSH, self.old_term)
-    
-    def poll(self):
-        if self.noCancel: return None
-        if isWindows:
-            if not len(self.capturedChars) == 0:
-                return self.capturedChars.pop(0)
-
-            eventsPeek = self.readHandle.PeekConsoleInput(10000)
-
-            if len(eventsPeek) == 0:
-                return None
-
-            if not len(eventsPeek) == self.curEventLength:
-                for curEvent in eventsPeek[self.curEventLength:]:
-                    if curEvent.EventType == KEY_EVENT:
-                        if ord(curEvent.Char) == 0 or not curEvent.KeyDown:
-                            pass
-                        else:
-                            curChar = str(curEvent.Char)
-                            self.capturedChars.append(curChar)
-                self.curEventLength = len(eventsPeek)
-
-            if not len(self.capturedChars) == 0:
-                return self.capturedChars.pop(0)
-            else:
-                return None
-        else:
-            dr,dw,de = select.select([sys.stdin], [], [], 0)
-            if not dr == []:
-                return sys.stdin.read(1)
-            return None
 
 def timestampMillis() -> int:
     """Get current timestamp in millis"""
@@ -351,26 +273,18 @@ def runBatchedIterator(inputs, n, getInputs, processBatch, processOutput, batchS
             yield results
 
     startTime = timestampMillis()
-    # we need keypoller because vllm doen't like to be keyboard interrupted
-    with KeyPoller(noCancel) as keypoller:
-        def runOnBatchedFunc(batchEnd):
-            elapsed = timestampMillis() - startTime
-            secondsPerPrompt = elapsed / (float(batchEnd))
-            totalTime = elapsed *  n / float(batchEnd)
-            timeLeft = totalTime - elapsed
-            dispStr = secondsToDisplayStr(timeLeft/1000.0)
-            doneDateTimeStr = getFutureDatetime(timeLeft/1000.0).strftime('%I:%M:%S %p')
-            if verbose:
-                print(batchEnd, "/", n, f"{secondsPerPrompt} millis per item {dispStr}done at {doneDateTimeStr}")
-            keys = keypoller.poll()
-            if not keys is None:
-                print(keys)
-                if str(keys) == "c":
-                    print("got c")
-                    raise ValueError("stopped")   
-        
-        for output in onDemandBatchedIter(inputs, runOnBatchedFunc):
-            yield output
+    def runOnBatchedFunc(batchEnd):
+        elapsed = timestampMillis() - startTime
+        secondsPerPrompt = elapsed / (float(batchEnd))
+        totalTime = elapsed *  n / float(batchEnd)
+        timeLeft = totalTime - elapsed
+        dispStr = secondsToDisplayStr(timeLeft/1000.0)
+        doneDateTimeStr = getFutureDatetime(timeLeft/1000.0).strftime('%I:%M:%S %p')
+        if verbose:
+            print(batchEnd, "/", n, f"{secondsPerPrompt} millis per item {dispStr}done at {doneDateTimeStr}")
+    
+    for output in onDemandBatchedIter(inputs, runOnBatchedFunc):
+        yield output
 
 
 async def maybeAwait(coroOrValue):
@@ -459,45 +373,37 @@ async def runBatchedIteratorAsync(
 
     # progress printer + cancel support (same logic as original)
     startTime = timestampMillis()
-    with KeyPoller(noCancel) as keypoller:
+    def onBatch(batchEnd):
+        elapsed = timestampMillis() - startTime
+        secondsPerPrompt = elapsed / (float(batchEnd))
+        totalTime = elapsed *  n / float(batchEnd)
+        timeLeft = totalTime - elapsed
+        dispStr = secondsToDisplayStr(timeLeft/1000.0)
+        doneDateTimeStr = getFutureDatetime(timeLeft/1000.0).strftime('%I:%M:%S %p')
+        if verbose:
+            print(batchEnd, "/", n, f"{secondsPerPrompt} millis per item {dispStr}done at {doneDateTimeStr}")
 
-        def onBatch(batchEnd):
-            elapsed = timestampMillis() - startTime
-            secondsPerPrompt = elapsed / (float(batchEnd))
-            totalTime = elapsed *  n / float(batchEnd)
-            timeLeft = totalTime - elapsed
-            dispStr = secondsToDisplayStr(timeLeft/1000.0)
-            doneDateTimeStr = getFutureDatetime(timeLeft/1000.0).strftime('%I:%M:%S %p')
-            if verbose:
-                print(batchEnd, "/", n, f"{secondsPerPrompt} millis per item {dispStr}done at {doneDateTimeStr}")
-            keys = keypoller.poll()
-            if not keys is None:
-                print(keys)
-                if str(keys) == "c":
-                    print("got c")
-                    raise ValueError("stopped")   
+    flattenedOutputsIter = getFlattenedOutputsIterator(flattenedAsyncGen(),
+                                                        runOnBatchFunc=onBatch)
 
-        flattenedOutputsIter = getFlattenedOutputsIterator(flattenedAsyncGen(),
-                                                           runOnBatchFunc=onBatch)
+    curOutputs : deque = deque()
+    idx        = 0
+    async for input_, inputUnflattened, inputFlattened in agenFromSyncIter(
+            zip(inputs, inputsIter2, flattenedIter2)):
+        # progress estimation bookkeeping
+        averageNPerN = (averageNPerN * idx + len(inputFlattened)) / float(idx + 1)
+        n   = math.ceil(baselineN * averageNPerN)
+        idx += 1
 
-        curOutputs : deque = deque()
-        idx        = 0
-        async for input_, inputUnflattened, inputFlattened in agenFromSyncIter(
-                zip(inputs, inputsIter2, flattenedIter2)):
-            # progress estimation bookkeeping
-            averageNPerN = (averageNPerN * idx + len(inputFlattened)) / float(idx + 1)
-            n   = math.ceil(baselineN * averageNPerN)
-            idx += 1
+        # fetch outputs until we have enough for this input
+        while len(curOutputs) < len(inputFlattened):
+            curOutputs.extend(await flattenedOutputsIter.__anext__())
 
-            # fetch outputs until we have enough for this input
-            while len(curOutputs) < len(inputFlattened):
-                curOutputs.extend(await flattenedOutputsIter.__anext__())
-
-            outputsUnflattened = unflatten(
-                [curOutputs.popleft() for _ in range(len(inputFlattened))],
-                inputUnflattened
-            )
-            yield processOutput(input_, inputUnflattened, outputsUnflattened)
+        outputsUnflattened = unflatten(
+            [curOutputs.popleft() for _ in range(len(inputFlattened))],
+            inputUnflattened
+        )
+        yield processOutput(input_, inputUnflattened, outputsUnflattened)
 
 
 async def runBatchedAsync(

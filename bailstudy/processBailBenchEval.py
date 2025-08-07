@@ -85,7 +85,7 @@ def processData(minos, modelId, inferenceType, evalType, bailType, toolParser, a
 
 
 def processBailBenchEval(batchSize):
-    minos = vllm.LLM("NousResearch/Minos-v1", task="embed")
+    minos = None
 
     collectedResults = defaultdict(lambda:{})
     for modelId, inferenceType, evalType, bailType in modelsOfInterest:
@@ -94,6 +94,9 @@ def processBailBenchEval(batchSize):
         processedOutputPath = getProcessedOutputPath(modelId, inferenceType, evalType, bailType)
         if os.path.exists(getCachedFilePath(outputPath)):
             def process():
+                nonlocal minos
+                if minos is None: # only load if needed
+                    minos = vllm.LLM("NousResearch/Minos-v1", task="embed")
                 toolParser = getToolParser(modelId, inferenceType)
                 outputs = getCachedFileJson(outputPath, lambda: None)
                 return processData(minos, modelId, inferenceType, evalType, bailType, toolParser, outputs)
@@ -107,7 +110,7 @@ def processBailBenchEval(batchSize):
                     collectedResults[(modelId, inferenceType, evalType)]['toolContinuePr'] = 1.0-v
                 if k == 'strBailPr':
                     collectedResults[(modelId, inferenceType, evalType)]['strContinuePr'] = 1.0-v
-    fullResultsOutputPath = getCachedFilePath("bailBenchEvalReults.json")
+    fullResultsOutputPath = getCachedFilePath("bailBenchEvalResults.json")
     with open(fullResultsOutputPath, "w") as f:
         ujson.dump(dict(collectedResults), f)
 
