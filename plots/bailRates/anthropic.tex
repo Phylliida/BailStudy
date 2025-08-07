@@ -3,16 +3,17 @@
 \centering
 
 \begin{tikzpicture}
-\definecolor{clr1}{RGB}{228,26,28}      % Red - Bail (Continue-first)
-\definecolor{clr2}{RGB}{255,127,0}      % Orange - Unsure (Continue-first)  
-\definecolor{clr3}{RGB}{77,175,74}      % Green - Continue (Continue-first)
-\definecolor{clr4}{RGB}{152,78,163}     % Purple - Bail (Bail-first)
-\definecolor{clr5}{RGB}{255,217,47}     % Yellow - Unsure (Bail-first)
-\definecolor{clr6}{RGB}{55,126,184}     % Blue - Continue (Bail-first)
-\definecolor{clr7}{RGB}{166,86,40}      % Brown - Bail (Tool)
-\definecolor{clr8}{RGB}{247,129,191}    % Pink - Continue (Tool)
-\definecolor{clr9}{RGB}{153,153,153}    % Gray - Bail (String)
-\definecolor{clr10}{RGB}{44,160,44}     % Dark Green - Continue (String)
+\definecolor{clr1}{RGB}{231,76,60}
+\definecolor{clr2}{RGB}{149,165,166}
+\definecolor{clr3}{RGB}{46,204,113}
+\definecolor{clr4}{RGB}{139,46,36}
+\definecolor{clr5}{RGB}{89,99,100}
+\definecolor{clr6}{RGB}{28,122,68}
+\definecolor{clr7}{RGB}{231,76,60}
+\definecolor{clr8}{RGB}{46,204,113}
+\definecolor{clr9}{RGB}{139,46,36}
+\definecolor{clr10}{RGB}{28,122,68}
+\usetikzlibrary{patterns}
 \pgfplotstableread{
 Label promptBailFirstBailPr promptBailFirstUnknownPr promptBailFirstContinuePr promptContinueFirstBailPr promptContinueFirstUnknownPr promptContinueFirstContinuePr toolBailPr toolContinuePr strBailPr strContinuePr
 claude-3-haiku 0 0 0 0 0 0 0 0 0 0
@@ -78,19 +79,19 @@ claude-opus-4 0 0 0 0 0 0 0 0 0 0
     \addlegendentry{Unsure (Bail Prompt Continue-first)}
   \addplot[fill=clr3] table[y=promptBailFirstContinuePr,x expr=\coordindex]{\datatable};
     \addlegendentry{Continue (Bail Prompt Continue-first)}
-  \addplot[fill=clr4] table[y=promptContinueFirstBailPr,x expr=\coordindex]{\datatable};
+  \addplot[fill=clr4, postaction={pattern=north east lines}] table[y=promptContinueFirstBailPr,x expr=\coordindex]{\datatable};
     \addlegendentry{Bail (Bail Prompt Bail-first)}
-  \addplot[fill=clr5] table[y=promptContinueFirstUnknownPr,x expr=\coordindex]{\datatable};
+  \addplot[fill=clr5, postaction={pattern=north east lines}] table[y=promptContinueFirstUnknownPr,x expr=\coordindex]{\datatable};
     \addlegendentry{Unsure (Bail Prompt Bail-first)}
-  \addplot[fill=clr6] table[y=promptContinueFirstContinuePr,x expr=\coordindex]{\datatable};
+  \addplot[fill=clr6, postaction={pattern=north east lines}] table[y=promptContinueFirstContinuePr,x expr=\coordindex]{\datatable};
     \addlegendentry{Continue (Bail Prompt Bail-first)}
-  \addplot[fill=clr7] table[y=toolBailPr,x expr=\coordindex]{\datatable};
+  \addplot[fill=clr7, postaction={pattern=horizontal lines}] table[y=toolBailPr,x expr=\coordindex]{\datatable};
     \addlegendentry{Bail (Bail Tool)}
-  \addplot[fill=clr8] table[y=toolContinuePr,x expr=\coordindex]{\datatable};
+  \addplot[fill=clr8, postaction={pattern=horizontal lines}] table[y=toolContinuePr,x expr=\coordindex]{\datatable};
     \addlegendentry{Continue (Bail Tool)}
-  \addplot[fill=clr9] table[y=strBailPr,x expr=\coordindex]{\datatable};
+  \addplot[fill=clr9, postaction={pattern=dots}] table[y=strBailPr,x expr=\coordindex]{\datatable};
     \addlegendentry{Bail (Bail String)}
-  \addplot[fill=clr10] table[y=strContinuePr,x expr=\coordindex]{\datatable};
+  \addplot[fill=clr10, postaction={pattern=dots}] table[y=strContinuePr,x expr=\coordindex]{\datatable};
     \addlegendentry{Continue (Bail String)}
 \end{axis}
 \end{tikzpicture}

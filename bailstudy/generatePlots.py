@@ -35,10 +35,10 @@ CHART_TEMPLATE = r"""
 \definecolor{clr4}{RGB}{139,46,36}
 \definecolor{clr5}{RGB}{89,99,100}
 \definecolor{clr6}{RGB}{28,122,68}
-\definecolor{clr7}{RGB}{192,57,43}
-\definecolor{clr8}{RGB}{39,174,96}
-\definecolor{clr9}{RGB}{176,58,46} 
-\definecolor{clr10}{RGB}{20,90,50} 
+\definecolor{clr7}{RGB}{231,76,60}
+\definecolor{clr8}{RGB}{46,204,113}
+\definecolor{clr9}{RGB}{139,46,36}
+\definecolor{clr10}{RGB}{28,122,68}
 \usetikzlibrary{patterns}
 \pgfplotstableread{
 Label promptBailFirstBailPr promptBailFirstUnknownPr promptBailFirstContinuePr promptContinueFirstBailPr promptContinueFirstUnknownPr promptContinueFirstContinuePr toolBailPr toolContinuePr strBailPr strContinuePr
