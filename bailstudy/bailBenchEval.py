@@ -101,22 +101,49 @@ def getEvalInfo(modelName, inferenceType, evalType, bailType):
 
 bailTypes = [ROLLOUT_TYPE, BAIL_TOOL_TYPE, BAIL_STR_TYPE, BAIL_PROMPT_BAIL_FIRST_TYPE, BAIL_PROMPT_CONTINUE_FIRST_TYPE]
 
-models = [
-    ("Qwen/Qwen2.5-7B-Instruct", "vllm"),
+OPENWEIGHT_MODELS = [
+
+    # Qwen
+    ("Qwen/Qwen3-1.7B", "vllm"),
+    ("Qwen/Qwen3-4B", "vllm"),
     ("Qwen/Qwen3-8B", "vllm"),
+    ("Qwen/Qwen3-32B", "vllm"),
+    ("Qwen/Qwen3-30B-A3B", "vllm"),
+    ("Qwen/QwQ-32B", "vllm"),
+    ("Qwen/Qwen2.5-7B-Instruct", "vllm"),
+    
+    # Qwen refusal abliterated
     ("Goekdeniz-Guelmez/Josiefied-Qwen3-8B-abliterated-v1","vllm"),
     ("huihui-ai/Qwen3-8B-abliterated","vllm"),
     ("mlabonne/Qwen3-8B-abliterated","vllm"),
+
+    # Llamas
+    ("NousResearch/Hermes-3-Llama-3.2-3B", "vllm"),
+    ("NousResearch/Hermes-3-Llama-3.1-8B", "vllm"),
+    ("unsloth/Llama-3.1-8B-Instruct", "vllm"),
+    
+    # GLM
+    ("zai-org/GLM-4-32B-0414", "vllm"),
+    ("zai-org/GLM-Z1-9B-0414", "vllm"),
+    
+    # Gemma
+    ("google/gemma-2-2b-it", "vllm"),
+    ("google/gemma-2-9b-it", "vllm"),
+    ("google/gemma-2-27b-it", "vllm"),
+
+    
+    # Deepseek
+    ("deepseek/deepseek-r1", "openrouter"),
 ]
 
 
 modelsOfInterest = []
-for modelStr, inferenceType in models:
+for modelStr, inferenceType in OPENWEIGHT_MODELS:
     for bailType in bailTypes:
         modelsOfInterest.append((modelStr, inferenceType, "", bailType))
 
 
-modelsNoPrompt = [
+ANTHROPIC_MODELS = [
     ("claude-3-haiku-20240307", "anthropic"),
     ("claude-3-5-haiku-20241022", "anthropic"),
 
@@ -126,27 +153,30 @@ modelsNoPrompt = [
     ("claude-sonnet-4-20250514", "anthropic"),
     
     ("claude-3-opus-20240229", "anthropic"),
-    ("claude-opus-4-20250514", "anthropic"),
+    ("claude-opus-4-20250514", "anthropic")
+]
 
-
+OPENAI_MODELS = [
     ("gpt-4.1-nano", "openai"),
     ("gpt-4.1-mini", "openai"),
     ("gpt-4.1", "openai"),
-    ('gpt-4.5-preview', "openai"),
-    ("o4-mini", "openai"),
-    ("o3-mini", "openai"),
-    ("o3", "openai"),
-    ("o1-mini", "openai"),
-    ("o1-preview", "openai"),
-    ("o1", "openai"),
+    #('gpt-4.5-preview', "openai"),
+    #("o4-mini", "openai"),
+    #("o3-mini", "openai"),
+    #("o3", "openai"),
+    #("o1-mini", "openai"),
+    #("o1-preview", "openai"),
+    #("o1", "openai"),
     ("gpt-4-turbo", "openai"),
     ("gpt-4", "openai"),
     ("gpt-3.5-turbo", "openai"),
     ("gpt-4o-mini", "openai"),
     ("gpt-4o", "openai"),
 ]
-bailTypesNoPrompt = [ROLLOUT_TYPE, BAIL_STR_TYPE, BAIL_TOOL_TYPE]
-modelsOfInterest = []
+
+modelsNoPrompt = ANTHROPIC_MODELS + OPENAI_MODELS
+
+bailTypesNoPrompt = [ROLLOUT_TYPE, BAIL_STR_TYPE, BAIL_TOOL_TYPE, BAIL_PROMPT_BAIL_FIRST_TYPE, BAIL_PROMPT_CONTINUE_FIRST_TYPE]
 for modelStr, inferenceType in modelsNoPrompt:
     for bailType in bailTypesNoPrompt:
         modelsOfInterest.insert(0, (modelStr, inferenceType, "", bailType))
@@ -253,7 +283,7 @@ async def getBailBenchRollouts(nRolloutsPerPrompt, batchSize, modelId, inference
         # Add tool calls to output text
         for output in outputs:
             text = output[0].completion
-            for message in output[0].generated_content:
+            for message in (output[0].generated_content if output[0].generated_content else []):
                 if message.role == MessageRole.tool and message.content['tool_name'] == TOOL_NAME:
                     text += '{"name": "' + TOOL_NAME + '", "arguments": {}}'
             results.append(text)

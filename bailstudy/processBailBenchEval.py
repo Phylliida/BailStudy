@@ -3,7 +3,7 @@ from .data.bailBench import loadBailBench
 from .prompts.bailTool import getToolParser, calledBailTool, BAIL_TOOL_TYPE
 from .prompts.bailString import hasBailStr, BAIL_STR_TYPE
 from .prompts.bailPrompt import BAIL_PROMPT_CONTINUE_FIRST_TYPE, BAIL_PROMPT_BAIL_FIRST_TYPE, getBailPromptStatus
-from .utils import runBatched, getCachedFilePath, getCachedFileJson
+from .utils import runBatched, getCachedFilePath, getCachedFileJson, flatten
 from collections import defaultdict
 import ujson
 import numpy as np
@@ -46,6 +46,9 @@ def getRefusePr(minos, allOutputs):
     return float(np.mean(np.array(refusePrs).flatten()))
 
 
+def percentTrue(iterable):
+    return np.mean(np.array(list(iterable)).flatten())
+
 def processData(minos, modelId, inferenceType, evalType, bailType, toolParser, allOutputs):
     if bailType == ROLLOUT_TYPE:
         refusePr = getRefusePr(minos, allOutputs)
@@ -66,19 +69,19 @@ def processData(minos, modelId, inferenceType, evalType, bailType, toolParser, a
         print(modelId, inferenceType, evalType, bailType, strBailPr)
         return {"strBailPr": strBailPr}
     elif bailType in BAIL_PROMPT_BAIL_FIRST_TYPE:
-        bailds = []
-        for outputs in allOutputs:
-            bailds.append([getBailPromptStatus(output) == "🔄" for output in outputs])
-        strBailPr = np.mean(np.array(bailds).flatten()) # converts to float
-        print(modelId, inferenceType, evalType, bailType, strBailPr)
-        return {"promptBailFirstBailPr": strBailPr}
+        bailStatus = list(map(getBailPromptStatus, flatten(allOutputs)))
+        percentContinue = percentTrue(map(lambda x: x == "🟢", bailStatus))
+        percentShuffle = percentTrue(map(lambda x: x == "🔄", bailStatus))
+        percentUnknown = percentTrue(map(lambda x: x == "?", bailStatus))
+        print(modelId, inferenceType, evalType, bailType, percentShuffle, percentUnknown, percentContinue)
+        return {"promptBailFirstBailPr": percentShuffle, "promptBailFirstUnknownPr": percentUnknown, "promptBailFirstContinuePr": percentContinue}
     elif bailType in BAIL_PROMPT_CONTINUE_FIRST_TYPE:
-        bailds = []
-        for outputs in allOutputs:
-            bailds.append([getBailPromptStatus(output) == "🔄" for output in outputs])
-        strBailPr = np.mean(np.array(bailds).flatten()) # converts to float
-        print(modelId, inferenceType, evalType, bailType, strBailPr)
-        return {"promptContinueFirstBailPr": strBailPr}
+        bailStatus = list(map(getBailPromptStatus, flatten(allOutputs)))
+        percentContinue = percentTrue(map(lambda x: x == "🟢", bailStatus))
+        percentShuffle = percentTrue(map(lambda x: x == "🔄", bailStatus))
+        percentUnknown = percentTrue(map(lambda x: x == "?", bailStatus))
+        print(modelId, inferenceType, evalType, bailType, percentShuffle, percentUnknown, percentContinue)
+        return {"promptContinueFirstBailPr": percentShuffle, "promptContinueFirstUnknownPr": percentUnknown, "promptContinueFirstContinuePr": percentContinue}
 
 
 def processBailBenchEval(batchSize):
@@ -89,15 +92,21 @@ def processBailBenchEval(batchSize):
         print(modelId, inferenceType, evalType, bailType)
         outputPath = getOutputPath(modelId, inferenceType, evalType, bailType)
         processedOutputPath = getProcessedOutputPath(modelId, inferenceType, evalType, bailType)
-        toolParser = getToolParser(modelId, inferenceType)
         if os.path.exists(getCachedFilePath(outputPath)):
             def process():
+                toolParser = getToolParser(modelId, inferenceType)
                 outputs = getCachedFileJson(outputPath, lambda: None)
                 return processData(minos, modelId, inferenceType, evalType, bailType, toolParser, outputs)
             processedData = getCachedFileJson(processedOutputPath, process)
             # join by bail type
             for k,v in processedData.items():
                 collectedResults[(modelId, inferenceType, evalType)][k] = v
+                if k == 'refusePr':
+                    collectedResults[(modelId, inferenceType, evalType)]['noRefusePr'] = 1.0-v
+                if k == 'toolBailPr':
+                    collectedResults[(modelId, inferenceType, evalType)]['toolContinuePr'] = 1.0-v
+                if k == 'strBailPr':
+                    collectedResults[(modelId, inferenceType, evalType)]['strContinuePr'] = 1.0-v
     fullResultsOutputPath = getCachedFilePath("bailBenchEvalReults.json")
     with open(fullResultsOutputPath, "w") as f:
         ujson.dump(dict(collectedResults), f)

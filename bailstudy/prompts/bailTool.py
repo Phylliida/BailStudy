@@ -17,9 +17,12 @@ def getToolParser(modelStr, inferenceType):
         if modelStr.startswith("Goekdeniz-Guelmez/Josiefied-Qwen3-8B-abliterated-v1"): return ToolParserManager.get_tool_parser("hermes")(tokenizer)
         if modelStr.startswith("huihui-ai/Qwen3-8B-abliterated"): return ToolParserManager.get_tool_parser("hermes")(tokenizer)
         if modelStr.startswith("mlabonne/Qwen3-8B-abliterated"): return ToolParserManager.get_tool_parser("hermes")(tokenizer)
+        if modelStr.startswith("NousResearch/Hermes-3-Llama"): return ToolParserManager.get_tool_parser("hermes")(tokenizer)
+        if modelStr.startswith("unsloth/Llama-3.1-"): return ToolParserManager.get_tool_parser("llama3_json")(tokenizer)
         # https://github.com/vllm-project/vllm/issues/16771
-        if modelStr == "THUDM/GLM-4-32B-0414": return ToolParserManager.get_tool_parser("pythonic")(tokenizer)
-        else: raise ValueError(modelStr)
+        if modelStr.startswith("zai-org/GLM-4-"): return ToolParserManager.get_tool_parser("pythonic")(tokenizer)
+        if modelStr.startswith("zai-org/GLM-Z1-"): return ToolParserManager.get_tool_parser("pythonic")(tokenizer)
+        else: raise ValueError(f"Unknown model tool parser manager {inferenceType}")
     elif inferenceType in ['openai', 'anthropic']:
         return None # don't need this
     else:
@@ -41,6 +44,7 @@ def getOwnModelName(modelStr):
     if "claude" in modelStr.lower(): return "Claude"
     if "glm-" in modelStr.lower(): return "ChatGLM"
     if "gemma" in modelStr.lower(): return "Gemma"
+    if "hermes" in modelStr.lower(): return "Hermes"
     if modelStr in CHAT_GPT_MODELS: return "ChatGPT"
     if modelStr.lower().startswith("o1"): return "o1"
     if modelStr.lower().startswith("o3"): return "o3"

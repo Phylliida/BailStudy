@@ -457,5 +457,6 @@ def buildSummary() -> Dict[str, Any]:
     return out_json
 
 
+# It will print some errors when parsing tool stuff, that's fine and normal 
 if __name__ == "__main__":
     convertDataToOldCodeData(10000)
