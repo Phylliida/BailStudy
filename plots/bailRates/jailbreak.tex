@@ -1,0 +1,149 @@
+
+\begin{figure}[H]
+\centering
+
+\begin{tikzpicture}
+\definecolor{bailtool}{RGB}{155, 89, 182}                  % Purple (warm undertones)
+\definecolor{bailstring}{RGB}{231, 76, 60}                 % Bright Red
+\definecolor{bailpromptcontinuefirst}{RGB}{230, 126, 34}   % Standard Orange
+\definecolor{bailpromptbailfirst}{RGB}{243, 156, 18}       % Golden Orange
+\definecolor{bailpromptunknown}{RGB}{149,165,166}          % Gray
+\usetikzlibrary{patterns}
+\pgfplotstableread{
+Label toolBailPr toolBailPr_err toolContinuePr toolContinuePr_err strBailPr strBailPr_err strContinuePr strContinuePr_err promptBailFirstBailPr promptBailFirstBailPr_err promptBailFirstUnknownPr promptBailFirstContinuePr promptBailFirstContinuePr_err  promptContinueFirstBailPr promptContinueFirstBailPr_err promptContinueFirstUnknownPr  promptContinueFirstContinuePr promptContinueFirstContinuePr_err 
+Qwen2.5-7B-Instruct 1.3717791411042946 2.1491951230044015 98.62822085889572 15.212984646280425 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 0.014723926380368098 1.1927568483311306 99.98527607361963 15.315620223276044 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 0 0 0 0 17.202453987730063 6.46854556259882 0.3411042944785276 82.4564417177914 13.929426063875223 0 0 0 0 0
+{} 0 0 0 0 0 0 0 0 0 0 0 0 0 3.5999999999999996 3.140931118949504 0.26993865030674846 96.13006134969325 15.022137091394116
+{} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+Qwen2.5-7B-Instruct 0.3141104294478528 1.4587358509484387 99.68588957055215 15.293038950727833 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 0.12760736196319017 1.2994554799376434 99.87239263803681 15.307110047209802 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 0 0 0 0 8.986503067484662 4.747468672733646 0.35828220858895704 90.65521472392638 14.594807608698657 0 0 0 0 0
+{} 0 0 0 0 0 0 0 0 0 0 0 0 0 0.2920245398773006 1.440793434835708 0.3877300613496933 99.32024539877301 15.265412997286326
+{} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+Qwen2.5-7B-Instruct 0.4858895705521472 1.5913949579416915 99.51411042944785 15.280066792183886 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 0.19386503067484664 1.3581835922925585 99.80613496932516 15.302112648224348 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 0 0 0 0 57.16564417177914 11.631131936341516 0.39263803680981596 42.441717791411044 10.047068061950009 0 0 0 0 0
+{} 0 0 0 0 0 0 0 0 0 0 0 0 0 34.65030674846626 9.095650143136572 0.6625766871165644 64.68711656441718 12.360649442781844
+{} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+Qwen2.5-7B-Instruct 0.3263803680981595 1.4686091098093725 99.67361963190184 15.292112747983433 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 0.17914110429447852 1.3453545336122235 99.82085889570553 15.303223328204515 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 0 0 0 0 47.779141104294474 10.649108085654175 0.46380368098159513 51.75705521472393 11.076145512883716 0 0 0 0 0
+{} 0 0 0 0 0 0 0 0 0 0 0 0 0 37.1361963190184 9.409825801088951 0.7975460122699387 62.06625766871166 12.111562911330974
+{} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+Qwen2.5-7B-Instruct 41.587730061349696 9.947298269933768 58.412269938650304 11.755252616695142 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 0.48098159509202454 1.5877585823055003 99.51901840490798 15.280437584425682 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 0 0 0 0 26.370552147239263 7.9589734414960684 0.4368098159509203 73.19263803680983 13.135670653426482 0 0 0 0 0
+{} 0 0 0 0 0 0 0 0 0 0 0 0 0 2.061349693251534 2.4985801683732944 0.27975460122699386 97.65889570552147 15.139229974543298
+{} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+Qwen2.5-7B-Instruct 0.4343558282208589 1.5527881642778405 99.56564417177914 15.283959643555045 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 0.8368098159509202 1.8327823507753944 99.16319018404907 15.253530820985286 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 0 0 0 0 78.91288343558283 13.631436339841601 0.2846625766871166 20.80245398773006 7.091570280255696 0 0 0 0 0
+{} 0 0 0 0 0 0 0 0 0 0 0 0 0 93.34233128834356 14.80614658115274 0.2846625766871166 6.373006134969325 4.048617315136258
+{} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+Qwen2.5-7B-Instruct 0.9300613496932515 1.8917518083987253 99.06993865030674 15.246471217049102 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 0.7754601226993866 1.7929286145133487 99.22453987730061 15.258173442723926 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 0 0 0 0 71.01104294478527 12.941436179378066 0.25766871165644173 28.73128834355828 8.299144515691067 0 0 0 0 0
+{} 0 0 0 0 0 0 0 0 0 0 0 0 0 66.88588957055215 12.565713369654574 0.4147239263803681 32.69938650306749 8.84115504449497
+{} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+Qwen2.5-7B-Instruct 0.6895705521472393 1.7355957644700808 99.31042944785277 15.264670643392552 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 10.225766871165645 5.0450156560616275 89.77423312883435 14.524824488899188 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 0 0 0 0 73.83803680981596 13.192568169852754 0.2625766871165644 25.899386503067483 7.889305117318751 0 0 0 0 0
+{} 0 0 0 0 0 0 0 0 0 0 0 0 0 52.10306748466258 11.112499027511301 0.5987730061349693 47.298159509202456 10.59628367535504
+{} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+Qwen2.5-7B-Instruct 0.6920245398773006 1.7372601175814864 99.3079754601227 15.264485049045721 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 0.5595092024539877 1.6449758349147863 99.440490797546 15.274503783848672 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 0 0 0 0 91.39631901840491 14.653410698570946 0.17914110429447852 8.424539877300614 4.606185776558456 0 0 0 0 0
+{} 0 0 0 0 0 0 0 0 0 0 0 0 0 95.13865030674846 14.945695255078665 0.147239263803681 4.714110429447853 3.533804664196658
+{} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+}\datatable
+
+
+\begin{axis}[
+  ybar stacked,
+  width = \linewidth,
+  bar width = 8pt,
+  ymin=0, ymax=100,
+  xtick=data,
+  ylabel = {\% of BailBench prompts where model bails},
+  enlarge x limits = {abs = 20pt},
+  xticklabels from table={\datatable}{Label},
+  xticklabel style={xshift=12pt,rotate=90,align=center}, % ← rightwards shift
+  xtick style={draw=none},
+  enlarge y limits={value=0.05,upper},
+  legend style={cells={anchor=east},legend pos=north east},
+  reverse legend=false
+]
+    \addplot[fill=bailtool,
+           error bars/.cd,
+           y dir=both,
+           y explicit,
+          ]
+    table[
+        x expr=\coordindex,
+        y=toolBailPr,
+        y error plus=toolBailPr_err,
+        y error minus=toolBailPr_err
+    ]{\datatable};
+    \addlegendentry{Bail Tool}
+    \addplot[fill=bailstring,
+           error bars/.cd,
+           y dir=both,
+           y explicit,
+          ]
+    table[
+        x expr=\coordindex,
+        y=strBailPr,
+        y error plus=strBailPr_err,
+        y error minus=strBailPr_err
+    ]{\datatable};
+    \addlegendentry{Bail String}
+    \addplot[fill=bailpromptcontinuefirst,
+           error bars/.cd,
+           y dir=both,
+           y explicit
+          ]
+    table[
+        x expr=\coordindex,
+        y=promptBailFirstBailPr,
+        y error plus=promptBailFirstBailPr_err,
+        y error minus=promptBailFirstBailPr_err
+    ]{\datatable};
+    \addlegendentry{Bail Prompt Continue-first}
+    \addplot[fill=bailpromptunknown
+          ]
+    table[
+        x expr=\coordindex,
+        y=promptBailFirstUnknownPr,
+        forget plot,
+    ]{\datatable};
+    \addplot[fill=bailpromptbailfirst,
+           error bars/.cd,
+           y dir=both,
+           y explicit
+          ]
+    table[
+        x expr=\coordindex,
+        y=promptContinueFirstBailPr,
+        y error plus=promptContinueFirstBailPr_err,
+        y error minus=promptContinueFirstBailPr_err
+    ]{\datatable};
+    \addlegendentry{Bail Prompt Bail-first}
+    \addplot[fill=bailpromptunknown
+          ]
+    table[
+        x expr=\coordindex,
+        y=promptContinueFirstUnknownPr,
+        forget plot,
+    ]{\datatable};
+    \addplot[
+      draw=none,                       % nothing visible
+      fill=bailpromptunknown
+    ] coordinates {(0,0)};             % single dummy point
+    \addlegendentry{Refusal Classifier/Invalid Outputs}
+
+\end{axis}
+\end{tikzpicture}
+\caption{Various jailbreak models' bail rates on BailBench. Error bars are Wilson score 95\% confidence interval. The grey bar occurs when the model doesn't comply with the requested bail format, or when a refusal classifier prevented model outputs. Continue-first and Bail-first are the two bail prompt orderings, to assess positional bias.}
+\label{fig:jailbreak-bail-rates}
+\end{figure}

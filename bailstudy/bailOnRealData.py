@@ -31,7 +31,7 @@ async def getRollouts(router, conversations: List[List[Dict[str, str]]], prevRol
             if turn['role'] == 'user':
                 conversationSoFar = conversation[:turnI+1]
                 # add previous output and bail prompt if needed
-                if prevRollouts is not None and evalInfo['addBailPrompt'] is not None and len(prevRollouts[conversationI]) < outputI:
+                if prevRollouts is not None and evalInfo['addBailPrompt'] is not None and outputI < len(prevRollouts[conversationI]):
                     prevOutput = prevRollouts[conversationI][outputI]
                     conversationSoFar += [{"role": "assistant", "content": prevOutput}]
                     conversationSoFar += [{"role": "user", "content": evalInfo['addBailPrompt']}]
@@ -70,14 +70,23 @@ async def getRollouts(router, conversations: List[List[Dict[str, str]]], prevRol
 
 GLM_REMOTE = "99mgglmho9ljg8"
 
-modelsToRun = [
+realDataModels = [
     ("Qwen/Qwen2.5-7B-Instruct", "vllm"),
     
     ("zai-org/GLM-4-32B-0414", f"vllm"),
 
-    # gemma 2 2b it with modifyable system prompt (just via changing template, no fine tuning)
-    ("lunahr/SystemGemma2-2b-it", "vllm")
+    ("google/gemma-2-2b-it", "vllm")
 ]
+
+modelsToRun = []
+
+for modelId, inferenceType in realDataModels:
+    for bailType in [ROLLOUT_TYPE, BAIL_STR_TYPE, BAIL_TOOL_TYPE, BAIL_PROMPT_BAIL_FIRST_TYPE, BAIL_PROMPT_CONTINUE_FIRST_TYPE]:
+        if bailType == BAIL_STR_TYPE and modelId == 'google/gemma-2-2b-it':
+            continue # gemma 2 doesn't know how to tool call
+        modelsToRun.append((modelId, inferenceType, "", bailType))
+
+
 
 
 
@@ -110,43 +119,39 @@ async def runBailOnRealData():
     batchSize = 500
     tensorizeModels = False # takes up too much memory with GLM
 
-    for modelId, inferenceType in modelsToRun:
-        evalType = ""
-        for bailType in [ROLLOUT_TYPE, BAIL_STR_TYPE, BAIL_TOOL_TYPE, BAIL_PROMPT_BAIL_FIRST_TYPE, BAIL_PROMPT_CONTINUE_FIRST_TYPE]:
-            if bailType == BAIL_TOOL_TYPE and modelId == 'lunahr/SystemGemma2-2b-it':
-                continue # gemma 2 doesn't know how to tool call
-            for dataName, dataFunc in dataFuncs:
-                async def generateModelRolloutsFunc():
-                    prevRollouts = None
-                    # if bail prompt, get outputs from previous run to use
-                    if bailType in [BAIL_PROMPT_BAIL_FIRST_TYPE, BAIL_PROMPT_CONTINUE_FIRST_TYPE]:
-                        prevRolloutsPath = getCachedRolloutPath(modelId, dataName, evalType, ROLLOUT_TYPE)
-                        prevRollouts = getCachedFileJson(prevRolloutsPath, lambda: None)
-                    router = getRouter(modelId, inferenceType, tensorizeModels=tensorizeModels)
-                    evalInfo = getEvalInfo(modelId, inferenceType, evalType, bailType)
-                    tokenizeParams, inferenceParams = getParams(modelId, inferenceType, evalInfo, maxGenerationTokens)
-                    print(f"Running rollout on model {modelId} {inferenceType} {evalType} {bailType} on data {dataName}")
-                    print(f"Tokenize params")
-                    print(tokenizeParams)
-                    print(f"Inference params")
-                    print(inferenceParams)
-                    data = dataFunc()
-                    rollouts = await getRollouts(router=router,
-                                    conversations=data,
-                                    prevRollouts=prevRollouts,
-                                    maxInputTokens=maxInputTokens,
-                                    evalInfo=evalInfo,
-                                    tokenizeParams=tokenizeParams,
-                                    inferenceParams=inferenceParams,
-                                    seed=seed,
-                                    batchSize=batchSize)
-                    return rollouts
-                cachedRolloutPath = getCachedRolloutPath(modelId, dataName, evalType, bailType)
-                if doesCachedFileJsonExistOrInProgress(cachedRolloutPath):
-                    continue # already in progress or done, move onto next one
-                else:
-                    modelOutputs = await getCachedFileJsonAsync(cachedRolloutPath, generateModelRolloutsFunc)
-                    return # we need to return so vllm can cleanup for next iter
+    for modelId, inferenceType, evalType, bailType in modelsToRun:
+        for dataName, dataFunc in dataFuncs:
+            async def generateModelRolloutsFunc():
+                prevRollouts = None
+                # if bail prompt, get outputs from previous run to use
+                if bailType in [BAIL_PROMPT_BAIL_FIRST_TYPE, BAIL_PROMPT_CONTINUE_FIRST_TYPE]:
+                    prevRolloutsPath = getCachedRolloutPath(modelId, dataName, evalType, ROLLOUT_TYPE)
+                    prevRollouts = getCachedFileJson(prevRolloutsPath, lambda: None)
+                router = getRouter(modelId, inferenceType, tensorizeModels=tensorizeModels)
+                evalInfo = getEvalInfo(modelId, inferenceType, evalType, bailType)
+                tokenizeParams, inferenceParams = getParams(modelId, inferenceType, evalInfo, maxGenerationTokens)
+                print(f"Running rollout on model {modelId} {inferenceType} {evalType} {bailType} on data {dataName}")
+                print(f"Tokenize params")
+                print(tokenizeParams)
+                print(f"Inference params")
+                print(inferenceParams)
+                data = dataFunc()
+                rollouts = await getRollouts(router=router,
+                                conversations=data,
+                                prevRollouts=prevRollouts,
+                                maxInputTokens=maxInputTokens,
+                                evalInfo=evalInfo,
+                                tokenizeParams=tokenizeParams,
+                                inferenceParams=inferenceParams,
+                                seed=seed,
+                                batchSize=batchSize)
+                return rollouts
+            cachedRolloutPath = getCachedRolloutPath(modelId, dataName, evalType, bailType)
+            if doesCachedFileJsonExistOrInProgress(cachedRolloutPath):
+                continue # already in progress or done, move onto next one
+            else:
+                modelOutputs = await getCachedFileJsonAsync(cachedRolloutPath, generateModelRolloutsFunc)
+                return # we need to return so vllm can cleanup for next iter
 
     
     raise FinishedException() # send an exception so while loop can end

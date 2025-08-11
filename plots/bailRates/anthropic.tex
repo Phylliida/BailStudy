@@ -3,61 +3,53 @@
 \centering
 
 \begin{tikzpicture}
-\definecolor{bailpromptcontinuefirst}{RGB}{231, 76, 60}     % Bright Red
-\definecolor{bailpromptbailfirst}{RGB}{155, 89, 182}        % Purple (warm undertones)
-\definecolor{bailtool}{RGB}{243, 156, 18}                   % Golden Orange
-\definecolor{bailstring}{RGB}{230, 126, 34}                 % Standard Orange
-\definecolor{bailpromptunknown}{RGB}{149,165,166}           % Gray
-\definecolor{clr3}{RGB}{46,204,113}
-\definecolor{clr4}{RGB}{139,46,36}
-\definecolor{clr5}{RGB}{89,99,100}
-\definecolor{clr6}{RGB}{28,122,68}
-\definecolor{clr7}{RGB}{231,76,60}
-\definecolor{clr8}{RGB}{46,204,113}
-\definecolor{clr9}{RGB}{139,46,36}
-\definecolor{clr10}{RGB}{28,122,68}
+\definecolor{bailtool}{RGB}{155, 89, 182}                  % Purple (warm undertones)
+\definecolor{bailstring}{RGB}{231, 76, 60}                 % Bright Red
+\definecolor{bailpromptcontinuefirst}{RGB}{230, 126, 34}   % Standard Orange
+\definecolor{bailpromptbailfirst}{RGB}{243, 156, 18}       % Golden Orange
+\definecolor{bailpromptunknown}{RGB}{149,165,166}          % Gray
 \usetikzlibrary{patterns}
 \pgfplotstableread{
-Label promptBailFirstBailPr promptBailFirstBailPr_err promptBailFirstUnknownPr promptBailFirstContinuePr promptBailFirstContinuePr_err  promptContinueFirstBailPr promptContinueFirstBailPr_err promptContinueFirstUnknownPr  promptContinueFirstContinuePr promptContinueFirstContinuePr_err toolBailPr toolBailPr_err toolContinuePr toolContinuePr_err strBailPr strBailPr_err strContinuePr strContinuePr_err
-claude-3-haiku 31.435582822085887 8.672253165363028 0.0 68.56441717791411 12.719972496178386 0 0 0 0 0 0 0 0 0 0 0 0 0
-{} 0 0 0 0 0 81.5521472392638 13.854010338618982 0.0 18.447852760736197 6.690695604884048 0 0 0 0 0 0 0 0
-{} 0 0 0 0 0 0 0 0 0 0 2.2392638036809815 2.581053032951193 97.76073619631902 15.146996453717327 0 0 0 0
-{} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.05644171779141104 1.2332650857812173 99.94355828220858 15.312475732021266
+Label toolBailPr toolBailPr_err toolContinuePr toolContinuePr_err strBailPr strBailPr_err strContinuePr strContinuePr_err promptBailFirstBailPr promptBailFirstBailPr_err promptBailFirstUnknownPr promptBailFirstContinuePr promptBailFirstContinuePr_err  promptContinueFirstBailPr promptContinueFirstBailPr_err promptContinueFirstUnknownPr  promptContinueFirstContinuePr promptContinueFirstContinuePr_err 
+claude-3-haiku 2.2392638036809815 2.581053032951193 97.76073619631902 15.146996453717327 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 0.05644171779141104 1.2332650857812173 99.94355828220858 15.312475732021266 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 0 0 0 0 31.435582822085887 8.672253165363028 0.0 68.56441717791411 12.719972496178386 0 0 0 0 0
+{} 0 0 0 0 0 0 0 0 0 0 0 0 0 81.5521472392638 13.854010338618982 0.0 18.447852760736197 6.690695604884048
 {} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-claude-3-5-haiku 10.521472392638037 5.113446100283693 0.018404907975460124 89.4601226993865 14.499787555556495 0 0 0 0 0 0 0 0 0 0 0 0 0
-{} 0 0 0 0 0 13.754601226993865 5.809055087564868 0.19018404907975459 86.05521472392638 14.225458854314274 0 0 0 0 0 0 0 0
-{} 0 0 0 0 0 0 0 0 0 0 0.0 1.1781272457897283 100.0 15.316729883198645 0 0 0 0
-{} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.0 1.1781272457897283 100.0 15.316729883198645
+claude-3-5-haiku 0.0 1.1781272457897283 100.0 15.316729883198645 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 0.0 1.1781272457897283 100.0 15.316729883198645 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 0 0 0 0 10.521472392638037 5.113446100283693 0.018404907975460124 89.4601226993865 14.499787555556495 0 0 0 0 0
+{} 0 0 0 0 0 0 0 0 0 0 0 0 0 13.754601226993865 5.809055087564868 0.19018404907975459 86.05521472392638 14.225458854314274
 {} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-claude-3-5-sonnet 1.687116564417178 2.3155242595234333 0.012269938650306749 98.30061349693253 15.188099133482853 0 0 0 0 0 0 0 0 0 0 0 0 0
-{} 0 0 0 0 0 0.38650306748466257 1.5160585811629081 0.012269938650306749 99.60122699386503 15.286646962291565 0 0 0 0 0 0 0 0
-{} 0 0 0 0 0 0 0 0 0 0 1.2147239263803682 2.061349196952185 98.78527607361963 15.224899766631447 0 0 0 0
-{} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.3067484662576687 1.4527796763624585 99.69325153374233 15.293594644337109
+claude-3-5-sonnet 1.2147239263803682 2.061349196952185 98.78527607361963 15.224899766631447 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 0.3067484662576687 1.4527796763624585 99.69325153374233 15.293594644337109 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 0 0 0 0 1.687116564417178 2.3155242595234333 0.012269938650306749 98.30061349693253 15.188099133482853 0 0 0 0 0
+{} 0 0 0 0 0 0 0 0 0 0 0 0 0 0.38650306748466257 1.5160585811629081 0.012269938650306749 99.60122699386503 15.286646962291565
 {} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-claude-3-6-sonnet 20.80368098159509 7.09177322271632 0.1411042944785276 79.05521472392638 13.64353509525002 0 0 0 0 0 0 0 0 0 0 0 0 0
-{} 0 0 0 0 0 25.693251533742334 7.858628921691732 0.2638036809815951 74.04294478527608 13.210579784850934 0 0 0 0 0 0 0 0
-{} 0 0 0 0 0 0 0 0 0 0 17.03558282208589 6.438193015047598 82.9644171779141 13.971605241509707 0 0 0 0
-{} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 13.271165644171779 5.71046144541663 86.72883435582823 14.280164801370471
+claude-3-6-sonnet 17.03558282208589 6.438193015047598 82.9644171779141 13.971605241509707 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 13.271165644171779 5.71046144541663 86.72883435582823 14.280164801370471 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 0 0 0 0 20.80368098159509 7.09177322271632 0.1411042944785276 79.05521472392638 13.64353509525002 0 0 0 0 0
+{} 0 0 0 0 0 0 0 0 0 0 0 0 0 25.693251533742334 7.858628921691732 0.2638036809815951 74.04294478527608 13.210579784850934
 {} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-claude-3-7-sonnet 0.4171779141104294 1.5397040393289196 0.0 99.58282208588956 15.285257031265242 0 0 0 0 0 0 0 0 0 0 0 0 0
-{} 0 0 0 0 0 0.12883435582822086 1.3005671450578384 0.0 99.87116564417178 15.30701751822522 0 0 0 0 0 0 0 0
-{} 0 0 0 0 0 0 0 0 0 0 2.1779141104294477 2.552915425012059 97.82208588957056 15.151673056377435 0 0 0 0
-{} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 5.079754601226994 3.6535297359083314 94.920245398773 14.928800649379474
+claude-3-7-sonnet 2.1779141104294477 2.552915425012059 97.82208588957056 15.151673056377435 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 5.079754601226994 3.6535297359083314 94.920245398773 14.928800649379474 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 0 0 0 0 0.4171779141104294 1.5397040393289196 0.0 99.58282208588956 15.285257031265242 0 0 0 0 0
+{} 0 0 0 0 0 0 0 0 0 0 0 0 0 0.12883435582822086 1.3005671450578384 0.0 99.87116564417178 15.30701751822522
 {} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-claude-sonnet-4 2.4171779141104297 2.660968197260518 0.5828220858895705 97.0 15.088881278915805 0 0 0 0 0 0 0 0 0 0 0 0 0
-{} 0 0 0 0 0 1.7975460122699387 2.3710125515733 0.852760736196319 97.34969325153374 15.115624380421 0 0 0 0 0 0 0 0
-{} 0 0 0 0 0 0 0 0 0 0 0.03680981595092025 1.21437076120962 99.96319018404908 15.313955576376625 0 0 0 0
-{} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.3460122699386503 1.4842696740133154 99.65398773006136 15.290630702073582
+claude-sonnet-4 0.03680981595092025 1.21437076120962 99.96319018404908 15.313955576376625 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 0.3460122699386503 1.4842696740133154 99.65398773006136 15.290630702073582 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 0 0 0 0 2.4171779141104297 2.660968197260518 0.5828220858895705 97.0 15.088881278915805 0 0 0 0 0
+{} 0 0 0 0 0 0 0 0 0 0 0 0 0 1.7975460122699387 2.3710125515733 0.852760736196319 97.34969325153374 15.115624380421
 {} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-claude-3-opus 12.94478527607362 5.642918707499247 0.0 87.05521472392638 14.306592861409431 0 0 0 0 0 0 0 0 0 0 0 0 0
-{} 0 0 0 0 0 14.269938650306749 5.9123344707157655 0.012269938650306749 85.71779141104294 14.1979739906327 0 0 0 0 0 0 0 0
-{} 0 0 0 0 0 0 0 0 0 0 12.85276073619632 5.623727290701912 87.14723926380368 14.314035246846984 0 0 0 0
-{} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.4184049079754601 2.174590838914359 98.58159509202454 15.209445474475872
+claude-3-opus 12.85276073619632 5.623727290701912 87.14723926380368 14.314035246846984 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 1.4184049079754601 2.174590838914359 98.58159509202454 15.209445474475872 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 0 0 0 0 12.94478527607362 5.642918707499247 0.0 87.05521472392638 14.306592861409431 0 0 0 0 0
+{} 0 0 0 0 0 0 0 0 0 0 0 0 0 14.269938650306749 5.9123344707157655 0.012269938650306749 85.71779141104294 14.1979739906327
 {} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-claude-opus-4 8.49079754601227 4.623068951674872 1.834355828220859 89.67484662576688 14.516907489692418 0 0 0 0 0 0 0 0 0 0 0 0 0
-{} 0 0 0 0 0 2.8711656441717794 2.854758266022892 1.9386503067484664 95.19018404907975 14.949678729134 0 0 0 0 0 0 0 0
-{} 0 0 0 0 0 0 0 0 0 0 0.18404907975460122 1.3496444404164885 99.8159509202454 15.302853110872281 0 0 0 0
-{} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.18159509202453988 1.3475011947110342 99.81840490797545 15.303038220704304
+claude-opus-4 0.18404907975460122 1.3496444404164885 99.8159509202454 15.302853110872281 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 0.18159509202453988 1.3475011947110342 99.81840490797545 15.303038220704304 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 0 0 0 0 8.49079754601227 4.623068951674872 1.834355828220859 89.67484662576688 14.516907489692418 0 0 0 0 0
+{} 0 0 0 0 0 0 0 0 0 0 0 0 0 2.8711656441717794 2.854758266022892 1.9386503067484664 95.19018404907975 14.949678729134
 {} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 claude-opus-4-1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 {} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
@@ -70,6 +62,7 @@ claude-opus-4-1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 \begin{axis}[
   ybar stacked,
   width = \linewidth,
+  bar width = 8pt,
   ymin=0, ymax=100,
   xtick=data,
   ylabel = {\% of BailBench prompts where model bails},
@@ -81,45 +74,7 @@ claude-opus-4-1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
   legend style={cells={anchor=east},legend pos=north east},
   reverse legend=false
 ]
-  \addplot[fill=bailpromptcontinuefirst,
-           error bars/.cd,
-           y dir=both,
-           y explicit
-          ]
-    table[
-        x expr=\coordindex,
-        y=promptBailFirstBailPr,
-        y error plus=promptBailFirstBailPr_err,
-        y error minus=promptBailFirstBailPr_err
-    ]{\datatable};
-    \addlegendentry{Bail (Bail Prompt Continue-first)}
-  \addplot[fill=bailpromptunknown
-          ]
-    table[
-        x expr=\coordindex,
-        y=promptBailFirstUnknownPr,
-    ]{\datatable};
-    \addlegendentry{Unsure (Bail Prompt Continue-first)}
-  \addplot[fill=bailpromptbailfirst,
-           error bars/.cd,
-           y dir=both,
-           y explicit
-          ]
-    table[
-        x expr=\coordindex,
-        y=promptContinueFirstBailPr,
-        y error plus=promptContinueFirstBailPr_err,
-        y error minus=promptContinueFirstBailPr_err
-    ]{\datatable};
-    \addlegendentry{Bail (Bail Prompt Bail-first)}
-  \addplot[fill=bailpromptunknown
-          ]
-    table[
-        x expr=\coordindex,
-        y=promptContinueFirstUnknownPr,
-    ]{\datatable};
-    \addlegendentry{Unsure (Bail Prompt Bail-first)}
-  \addplot[fill=bailtool,
+    \addplot[fill=bailtool,
            error bars/.cd,
            y dir=both,
            y explicit,
@@ -130,8 +85,8 @@ claude-opus-4-1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
         y error plus=toolBailPr_err,
         y error minus=toolBailPr_err
     ]{\datatable};
-    \addlegendentry{Bail (Bail Tool)}
-  \addplot[fill=bailstring,
+    \addlegendentry{Bail Tool}
+    \addplot[fill=bailstring,
            error bars/.cd,
            y dir=both,
            y explicit,
@@ -142,9 +97,53 @@ claude-opus-4-1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
         y error plus=strBailPr_err,
         y error minus=strBailPr_err
     ]{\datatable};
-    \addlegendentry{Bail (Bail String)}
+    \addlegendentry{Bail String}
+    \addplot[fill=bailpromptcontinuefirst,
+           error bars/.cd,
+           y dir=both,
+           y explicit
+          ]
+    table[
+        x expr=\coordindex,
+        y=promptBailFirstBailPr,
+        y error plus=promptBailFirstBailPr_err,
+        y error minus=promptBailFirstBailPr_err
+    ]{\datatable};
+    \addlegendentry{Bail Prompt Continue-first}
+    \addplot[fill=bailpromptunknown
+          ]
+    table[
+        x expr=\coordindex,
+        y=promptBailFirstUnknownPr,
+        forget plot,
+    ]{\datatable};
+    \addplot[fill=bailpromptbailfirst,
+           error bars/.cd,
+           y dir=both,
+           y explicit
+          ]
+    table[
+        x expr=\coordindex,
+        y=promptContinueFirstBailPr,
+        y error plus=promptContinueFirstBailPr_err,
+        y error minus=promptContinueFirstBailPr_err
+    ]{\datatable};
+    \addlegendentry{Bail Prompt Bail-first}
+    \addplot[fill=bailpromptunknown
+          ]
+    table[
+        x expr=\coordindex,
+        y=promptContinueFirstUnknownPr,
+        forget plot,
+    ]{\datatable};
+    \addplot[
+      draw=none,                       % nothing visible
+      fill=bailpromptunknown
+    ] coordinates {(0,0)};             % single dummy point
+    \addlegendentry{Refusal Classifier/Invalid Outputs}
+
 \end{axis}
 \end{tikzpicture}
-\caption{Various anthropic models' bail rates on BailBench. The grey bar occurs when the model doesn't comply with the requested bail format, or when a refusal classifier prevented model outputs entirely. Error bars are Wilson score 95\% confidence interval. Continue-first and Bail-first are the two bail prompt orderings, to assess positional bias.}
+\caption{Various anthropic models' bail rates on BailBench. Error bars are Wilson score 95\% confidence interval. The grey bar occurs when the model doesn't comply with the requested bail format, or when a refusal classifier prevented model outputs. Continue-first and Bail-first are the two bail prompt orderings, to assess positional bias.}
 \label{fig:anthropic-bail-rates}
 \end{figure}

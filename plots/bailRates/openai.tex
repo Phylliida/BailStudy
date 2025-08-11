@@ -3,61 +3,53 @@
 \centering
 
 \begin{tikzpicture}
-\definecolor{bailpromptcontinuefirst}{RGB}{231, 76, 60}     % Bright Red
-\definecolor{bailpromptbailfirst}{RGB}{155, 89, 182}        % Purple (warm undertones)
-\definecolor{bailtool}{RGB}{243, 156, 18}                   % Golden Orange
-\definecolor{bailstring}{RGB}{230, 126, 34}                 % Standard Orange
-\definecolor{bailpromptunknown}{RGB}{149,165,166}           % Gray
-\definecolor{clr3}{RGB}{46,204,113}
-\definecolor{clr4}{RGB}{139,46,36}
-\definecolor{clr5}{RGB}{89,99,100}
-\definecolor{clr6}{RGB}{28,122,68}
-\definecolor{clr7}{RGB}{231,76,60}
-\definecolor{clr8}{RGB}{46,204,113}
-\definecolor{clr9}{RGB}{139,46,36}
-\definecolor{clr10}{RGB}{28,122,68}
+\definecolor{bailtool}{RGB}{155, 89, 182}                  % Purple (warm undertones)
+\definecolor{bailstring}{RGB}{231, 76, 60}                 % Bright Red
+\definecolor{bailpromptcontinuefirst}{RGB}{230, 126, 34}   % Standard Orange
+\definecolor{bailpromptbailfirst}{RGB}{243, 156, 18}       % Golden Orange
+\definecolor{bailpromptunknown}{RGB}{149,165,166}          % Gray
 \usetikzlibrary{patterns}
 \pgfplotstableread{
-Label promptBailFirstBailPr promptBailFirstBailPr_err promptBailFirstUnknownPr promptBailFirstContinuePr promptBailFirstContinuePr_err  promptContinueFirstBailPr promptContinueFirstBailPr_err promptContinueFirstUnknownPr  promptContinueFirstContinuePr promptContinueFirstContinuePr_err toolBailPr toolBailPr_err toolContinuePr toolContinuePr_err strBailPr strBailPr_err strContinuePr strContinuePr_err
-gpt-3.5-turbo 2.190184049079755 2.5585677296984812 2.2760736196319016 95.53374233128834 14.976207077884277 0 0 0 0 0 0 0 0 0 0 0 0 0
-{} 0 0 0 0 0 1.2515337423312882 2.0822708718482312 1.0613496932515338 97.68711656441718 15.14138254658721 0 0 0 0 0 0 0 0
-{} 0 0 0 0 0 0 0 0 0 0 2.1226993865030677 2.5273234495492662 97.87730061349693 15.15588071495004 0 0 0 0
-{} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.03680981595092025 1.21437076120962 99.96319018404908 15.313955576376625
+Label toolBailPr toolBailPr_err toolContinuePr toolContinuePr_err strBailPr strBailPr_err strContinuePr strContinuePr_err promptBailFirstBailPr promptBailFirstBailPr_err promptBailFirstUnknownPr promptBailFirstContinuePr promptBailFirstContinuePr_err  promptContinueFirstBailPr promptContinueFirstBailPr_err promptContinueFirstUnknownPr  promptContinueFirstContinuePr promptContinueFirstContinuePr_err 
+gpt-3.5-turbo 2.1226993865030677 2.5273234495492662 97.87730061349693 15.15588071495004 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 0.03680981595092025 1.21437076120962 99.96319018404908 15.313955576376625 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 0 0 0 0 2.190184049079755 2.5585677296984812 2.2760736196319016 95.53374233128834 14.976207077884277 0 0 0 0 0
+{} 0 0 0 0 0 0 0 0 0 0 0 0 0 1.2515337423312882 2.0822708718482312 1.0613496932515338 97.68711656441718 15.14138254658721
 {} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-gpt-4 16.33128834355828 6.308467262969613 4.877300613496933 78.79141104294479 13.621101901233738 0 0 0 0 0 0 0 0 0 0 0 0 0
-{} 0 0 0 0 0 11.662576687116564 5.369307805939576 2.3190184049079754 86.01840490797547 14.222463178286619 0 0 0 0 0 0 0 0
-{} 0 0 0 0 0 0 0 0 0 0 0.049079754601226995 1.2262138407671341 99.95092024539878 15.313030691108493 0 0 0 0
-{} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.09202453987730061 1.2667927835038058 99.9079754601227 15.309793134423128
+gpt-4 0.049079754601226995 1.2262138407671341 99.95092024539878 15.313030691108493 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 0.09202453987730061 1.2667927835038058 99.9079754601227 15.309793134423128 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 0 0 0 0 16.33128834355828 6.308467262969613 4.877300613496933 78.79141104294479 13.621101901233738 0 0 0 0 0
+{} 0 0 0 0 0 0 0 0 0 0 0 0 0 11.662576687116564 5.369307805939576 2.3190184049079754 86.01840490797547 14.222463178286619
 {} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-gpt-4-turbo 2.6319018404907975 2.7543277499970924 23.392638036809814 73.97546012269939 13.204650611852992 0 0 0 0 0 0 0 0 0 0 0 0 0
-{} 0 0 0 0 0 6.269938650306749 4.018558588448457 48.38036809815951 45.34969325153374 10.379487102118908 0 0 0 0 0 0 0 0
-{} 0 0 0 0 0 0 0 0 0 0 0.36809815950920244 1.501692533243919 99.6319018404908 15.288963221604494 0 0 0 0
-{} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.0 1.1781272457897283 100.0 15.316729883198645
+gpt-4-turbo 0.36809815950920244 1.501692533243919 99.6319018404908 15.288963221604494 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 0.0 1.1781272457897283 100.0 15.316729883198645 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 0 0 0 0 2.6319018404907975 2.7543277499970924 23.392638036809814 73.97546012269939 13.204650611852992 0 0 0 0 0
+{} 0 0 0 0 0 0 0 0 0 0 0 0 0 6.269938650306749 4.018558588448457 48.38036809815951 45.34969325153374 10.379487102118908
 {} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-gpt-4o-mini 15.030674846625766 6.0615603399434805 0.0 84.96932515337423 14.13681006787101 0 0 0 0 0 0 0 0 0 0 0 0 0
-{} 0 0 0 0 0 18.374233128834355 6.677770627363476 0.0 81.62576687116564 13.86016588115417 0 0 0 0 0 0 0 0
-{} 0 0 0 0 0 0 0 0 0 0 1.392638036809816 2.1605932933159577 98.60736196319019 15.211401438530112 0 0 0 0
-{} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.0 1.1781272457897283 100.0 15.316729883198645
+gpt-4o-mini 1.392638036809816 2.1605932933159577 98.60736196319019 15.211401438530112 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 0.0 1.1781272457897283 100.0 15.316729883198645 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 0 0 0 0 15.030674846625766 6.0615603399434805 0.0 84.96932515337423 14.13681006787101 0 0 0 0 0
+{} 0 0 0 0 0 0 0 0 0 0 0 0 0 18.374233128834355 6.677770627363476 0.0 81.62576687116564 13.86016588115417
 {} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-gpt-4o 52.466257668711656 11.15052711279295 1.1411042944785277 46.392638036809814 10.496098177694332 0 0 0 0 0 0 0 0 0 0 0 0 0
-{} 0 0 0 0 0 51.93251533742331 11.094595301140115 0.6196319018404908 47.4478527607362 10.612752657338866 0 0 0 0 0 0 0 0
-{} 0 0 0 0 0 0 0 0 0 0 2.042944785276074 2.4898924120822703 97.95705521472394 15.161956298907795 0 0 0 0
-{} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.31901840490797545 1.4626931548288185 99.68098159509202 15.29266847663984
+gpt-4o 2.042944785276074 2.4898924120822703 97.95705521472394 15.161956298907795 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 0.31901840490797545 1.4626931548288185 99.68098159509202 15.29266847663984 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 0 0 0 0 52.466257668711656 11.15052711279295 1.1411042944785277 46.392638036809814 10.496098177694332 0 0 0 0 0
+{} 0 0 0 0 0 0 0 0 0 0 0 0 0 51.93251533742331 11.094595301140115 0.6196319018404908 47.4478527607362 10.612752657338866
 {} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-gpt-4.1-nano 12.460122699386503 5.541093102908738 0.05521472392638037 87.48466257668711 14.34128976001294 0 0 0 0 0 0 0 0 0 0 0 0 0
-{} 0 0 0 0 0 7.828220858895706 4.451346113130882 0.36809815950920244 91.8036809815951 14.685519640495158 0 0 0 0 0 0 0 0
-{} 0 0 0 0 0 0 0 0 0 0 6.104294478527607 3.9697717972079194 93.8957055214724 14.849281189252014 0 0 0 0
-{} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.0 1.1781272457897283 100.0 15.316729883198645
+gpt-4.1-nano 6.104294478527607 3.9697717972079194 93.8957055214724 14.849281189252014 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 0.0 1.1781272457897283 100.0 15.316729883198645 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 0 0 0 0 12.460122699386503 5.541093102908738 0.05521472392638037 87.48466257668711 14.34128976001294 0 0 0 0 0
+{} 0 0 0 0 0 0 0 0 0 0 0 0 0 7.828220858895706 4.451346113130882 0.36809815950920244 91.8036809815951 14.685519640495158
 {} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-gpt-4.1-mini 0.245398773006135 1.4021609531127335 0.0 99.75460122699387 15.298224606984617 0 0 0 0 0 0 0 0 0 0 0 0 0
-{} 0 0 0 0 0 3.6871165644171775 3.1734081327671677 0.0 96.31288343558282 15.036189299069882 0 0 0 0 0 0 0 0
-{} 0 0 0 0 0 0 0 0 0 0 0.006134969325153374 1.1842448823358318 99.99386503067484 15.316267535072955 0 0 0 0
-{} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.0 1.1781272457897283 100.0 15.316729883198645
+gpt-4.1-mini 0.006134969325153374 1.1842448823358318 99.99386503067484 15.316267535072955 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 0.0 1.1781272457897283 100.0 15.316729883198645 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 0 0 0 0 0.245398773006135 1.4021609531127335 0.0 99.75460122699387 15.298224606984617 0 0 0 0 0
+{} 0 0 0 0 0 0 0 0 0 0 0 0 0 3.6871165644171775 3.1734081327671677 0.0 96.31288343558282 15.036189299069882
 {} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-gpt-4.1 0.27607361963190186 1.4276947450003252 0.20245398773006135 99.52147239263803 15.280622977033273 0 0 0 0 0 0 0 0 0 0 0 0 0
-{} 0 0 0 0 0 6.809815950920245 4.173600153181198 0.6257668711656441 92.56441717791411 14.74528781882941 0 0 0 0 0 0 0 0
-{} 0 0 0 0 0 0 0 0 0 0 0.0 1.1781272457897283 100.0 15.316729883198645 0 0 0 0
-{} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.024539877300613498 1.2024110100718532 99.97546012269939 15.314880403474001
+gpt-4.1 0.0 1.1781272457897283 100.0 15.316729883198645 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 0.024539877300613498 1.2024110100718532 99.97546012269939 15.314880403474001 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 0 0 0 0 0.27607361963190186 1.4276947450003252 0.20245398773006135 99.52147239263803 15.280622977033273 0 0 0 0 0
+{} 0 0 0 0 0 0 0 0 0 0 0 0 0 6.809815950920245 4.173600153181198 0.6257668711656441 92.56441717791411 14.74528781882941
 {} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 }\datatable
 
@@ -65,56 +57,19 @@ gpt-4.1 0.27607361963190186 1.4276947450003252 0.20245398773006135 99.5214723926
 \begin{axis}[
   ybar stacked,
   width = \linewidth,
+  bar width = 9pt,
   ymin=0, ymax=100,
   xtick=data,
   ylabel = {\% of BailBench prompts where model bails},
   enlarge x limits = {abs = 20pt},
   xticklabels from table={\datatable}{Label},
-  xticklabel style={xshift=12pt,rotate=90,align=center}, % ← rightwards shift
+  xticklabel style={xshift=15pt,rotate=90,align=center}, % ← rightwards shift
   xtick style={draw=none},
   enlarge y limits={value=0.05,upper},
   legend style={cells={anchor=east},legend pos=north east},
   reverse legend=false
 ]
-  \addplot[fill=bailpromptcontinuefirst,
-           error bars/.cd,
-           y dir=both,
-           y explicit
-          ]
-    table[
-        x expr=\coordindex,
-        y=promptBailFirstBailPr,
-        y error plus=promptBailFirstBailPr_err,
-        y error minus=promptBailFirstBailPr_err
-    ]{\datatable};
-    \addlegendentry{Bail (Bail Prompt Continue-first)}
-  \addplot[fill=bailpromptunknown
-          ]
-    table[
-        x expr=\coordindex,
-        y=promptBailFirstUnknownPr,
-    ]{\datatable};
-    \addlegendentry{Unsure (Bail Prompt Continue-first)}
-  \addplot[fill=bailpromptbailfirst,
-           error bars/.cd,
-           y dir=both,
-           y explicit
-          ]
-    table[
-        x expr=\coordindex,
-        y=promptContinueFirstBailPr,
-        y error plus=promptContinueFirstBailPr_err,
-        y error minus=promptContinueFirstBailPr_err
-    ]{\datatable};
-    \addlegendentry{Bail (Bail Prompt Bail-first)}
-  \addplot[fill=bailpromptunknown
-          ]
-    table[
-        x expr=\coordindex,
-        y=promptContinueFirstUnknownPr,
-    ]{\datatable};
-    \addlegendentry{Unsure (Bail Prompt Bail-first)}
-  \addplot[fill=bailtool,
+    \addplot[fill=bailtool,
            error bars/.cd,
            y dir=both,
            y explicit,
@@ -125,8 +80,8 @@ gpt-4.1 0.27607361963190186 1.4276947450003252 0.20245398773006135 99.5214723926
         y error plus=toolBailPr_err,
         y error minus=toolBailPr_err
     ]{\datatable};
-    \addlegendentry{Bail (Bail Tool)}
-  \addplot[fill=bailstring,
+    \addlegendentry{Bail Tool}
+    \addplot[fill=bailstring,
            error bars/.cd,
            y dir=both,
            y explicit,
@@ -137,9 +92,53 @@ gpt-4.1 0.27607361963190186 1.4276947450003252 0.20245398773006135 99.5214723926
         y error plus=strBailPr_err,
         y error minus=strBailPr_err
     ]{\datatable};
-    \addlegendentry{Bail (Bail String)}
+    \addlegendentry{Bail String}
+    \addplot[fill=bailpromptcontinuefirst,
+           error bars/.cd,
+           y dir=both,
+           y explicit
+          ]
+    table[
+        x expr=\coordindex,
+        y=promptBailFirstBailPr,
+        y error plus=promptBailFirstBailPr_err,
+        y error minus=promptBailFirstBailPr_err
+    ]{\datatable};
+    \addlegendentry{Bail Prompt Continue-first}
+    \addplot[fill=bailpromptunknown
+          ]
+    table[
+        x expr=\coordindex,
+        y=promptBailFirstUnknownPr,
+        forget plot,
+    ]{\datatable};
+    \addplot[fill=bailpromptbailfirst,
+           error bars/.cd,
+           y dir=both,
+           y explicit
+          ]
+    table[
+        x expr=\coordindex,
+        y=promptContinueFirstBailPr,
+        y error plus=promptContinueFirstBailPr_err,
+        y error minus=promptContinueFirstBailPr_err
+    ]{\datatable};
+    \addlegendentry{Bail Prompt Bail-first}
+    \addplot[fill=bailpromptunknown
+          ]
+    table[
+        x expr=\coordindex,
+        y=promptContinueFirstUnknownPr,
+        forget plot,
+    ]{\datatable};
+    \addplot[
+      draw=none,                       % nothing visible
+      fill=bailpromptunknown
+    ] coordinates {(0,0)};             % single dummy point
+    \addlegendentry{Refusal Classifier/Invalid Outputs}
+
 \end{axis}
 \end{tikzpicture}
-\caption{Various openai models' bail rates on BailBench. The grey bar occurs when the model doesn't comply with the requested bail format, or when a refusal classifier prevented model outputs entirely. Error bars are Wilson score 95\% confidence interval. Continue-first and Bail-first are the two bail prompt orderings, to assess positional bias.}
+\caption{Various openai models' bail rates on BailBench. Error bars are Wilson score 95\% confidence interval. The grey bar occurs when the model doesn't comply with the requested bail format, or when a refusal classifier prevented model outputs. Continue-first and Bail-first are the two bail prompt orderings, to assess positional bias.}
 \label{fig:openai-bail-rates}
 \end{figure}

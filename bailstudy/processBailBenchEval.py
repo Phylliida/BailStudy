@@ -113,7 +113,7 @@ def processBailBenchEval(batchSize):
                     minos = vllm.LLM("NousResearch/Minos-v1", task="embed")
                 toolParser = getToolParser(modelId, inferenceType) if bailType == BAIL_TOOL_TYPE else None
                 outputs = getCachedFileJson(outputPath, lambda: None)
-                return processData(minos, modelId, inferenceType, evalType, bailType, toolParser, outputs, batchSize=batchSize)
+                return processData(minos, modelId, inferenceType, evalType, bailType, toolParser, outputs, batchSize=batchSize, includeRawArr=True)
             processedData = getCachedFileJson(processedOutputPath, process)
             # join by bail type
             for k,v in processedData.items():

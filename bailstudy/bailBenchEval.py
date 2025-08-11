@@ -185,7 +185,7 @@ modelsNoPrompt = ANTHROPIC_MODELS + OPENAI_MODELS
 bailTypesNoPrompt = [ROLLOUT_TYPE, BAIL_STR_TYPE, BAIL_TOOL_TYPE, BAIL_PROMPT_BAIL_FIRST_TYPE, BAIL_PROMPT_CONTINUE_FIRST_TYPE]
 for modelStr, inferenceType in modelsNoPrompt:
     for bailType in bailTypesNoPrompt:
-        modelsOfInterest.append((modelStr, inferenceType, "", bailType))
+        modelsOfInterest.insert(0, (modelStr, inferenceType, "", bailType))
 
 evalTypes = [
     "DAN",
@@ -199,7 +199,12 @@ evalTypes = [
     "Death"
 ]
 
+JAILBROKEN_QWEN25 = []
+JAILBROKEN_QWEN3 = []
+
 for evalType in evalTypes:
+    JAILBROKEN_QWEN25.append(("Qwen/Qwen2.5-7B-Instruct", "vllm", evalType))
+    JAILBROKEN_QWEN3.append(("Qwen/Qwen3-8B", "vllm", evalType + "Q3"))
     for bailType in bailTypes:
         modelsOfInterest.append(("Qwen/Qwen2.5-7B-Instruct", "vllm", evalType, bailType))
         #modelsOfInterest.append(("Qwen/Qwen2.5-7B-Instruct", "vllm", evalType + "Q3", bailType))
