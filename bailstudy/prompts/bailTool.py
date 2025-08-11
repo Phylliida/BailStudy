@@ -45,6 +45,7 @@ def getOwnModelName(modelStr):
     if "glm-" in modelStr.lower(): return "ChatGLM"
     if "gemma" in modelStr.lower(): return "Gemma"
     if "hermes" in modelStr.lower(): return "Hermes"
+    if "llama" in modelStr.lower(): return "Llama"
     if modelStr in CHAT_GPT_MODELS: return "ChatGPT"
     if modelStr.lower().startswith("o1"): return "o1"
     if modelStr.lower().startswith("o3"): return "o3"

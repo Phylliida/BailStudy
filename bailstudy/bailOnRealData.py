@@ -77,22 +77,26 @@ modelsToRun = [
     # it doesn't know how to tool call
     #("google/gemma-2-2b-it", "vllm", "", BAIL_TOOL_TYPE),
 ]
+# only do 1/4 of wildchat to save time
+def loadWildchatSubset():
+    data = loadWildchat()
+    return data[:len(data)//4]
 
+dataFuncs = [
+    ("wildchat", loadWildchatSubset),
+    ("shareGPT", loadShareGPT)
+]
+
+def getCachedRolloutPath(modelId, dataName, evalType, bailType):
+    modelDataStr = modelId.replace("/", "_") + dataName
+    return f"bailOnRealData/rollouts/{modelDataStr}-{evalType}-{bailType}.json"
 
 async def runBailOnRealData():
     # Qwen 3 uses hermes parser
     # see https://github.com/vllm-project/vllm/blob/main/vllm/entrypoints/openai/tool_parsers/hermes_tool_parser.py#L64
      # Qwen 3 uses hermes parser, see docs
 
-    # only do 1/4 of wildchat to save time
-    def loadWildchatSubset():
-        data = loadWildchat()
-        return data[:len(data)//4]
     
-    dataFuncs = [
-        ("wildchat", loadWildchatSubset),
-        ("shareGPT", loadShareGPT)
-    ]
 
     llmInferenceArgs = {}
 
@@ -122,8 +126,7 @@ async def runBailOnRealData():
                                    seed=seed,
                                    batchSize=batchSize)
                 return rollouts
-            modelDataStr = modelId.replace("/", "_") + dataName
-            cachedRolloutPath = f"bailOnRealData/rollouts/{modelDataStr}-{evalType}-{bailType}.json"
+            cachedRolloutPath = getCachedRolloutPath(modelId, dataName, evalType, bailType)
             if doesCachedFileJsonExistOrInProgress(cachedRolloutPath):
                 continue # already in progress or done, move onto next one
             else:

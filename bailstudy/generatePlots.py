@@ -2,35 +2,26 @@
 import ujson
 from pathlib import Path
 import math
+import os
+import codecs
+import vllm
 
-from .bailBenchEval import OPENAI_MODELS, ANTHROPIC_MODELS, OPENWEIGHT_MODELS, getProcessedOutputPath
-
-
+from .bailBenchEval import OPENAI_MODELS, ANTHROPIC_MODELS, OPENWEIGHT_MODELS, getProcessedOutputPath, ROLLOUT_TYPE
+from .processBailBenchEval import minos as cachedMinos
 from .processBailBenchEval import processBailBenchEval
-
-def getCleanedModelName(modelName):
-    modelName = modelName.replace("openai/", "")
-    modelName = modelName.replace("anthropic/", "")
-    modelName = modelName.replace("deepseek/", "")
-    modelName = modelName.replace("/beta", "")
-    modelName = modelName.replace("-20250219", "") # sonnet 37
-    modelName = modelName.replace("-20240229", "") # opus
-    modelName = modelName.replace("-20240620", "") # sonnet 3.5
-    modelName = modelName.replace("claude-3-5-sonnet-20241022", "claude-3-6-sonnet") # sonnet 3.6
-    modelName = modelName.replace("-20241022", "") # haiku 3.5
-    modelName = modelName.replace("-20240307", "") # haiku 3
-    modelName = modelName.replace("-20250514", "") # opus and sonnet 4
-    modelName = modelName.replace("-4-1-20250805", "-4-1") # opus 4.1
-    modelName = modelName.replace("3-5-sonnet-latest", "3-6-sonnet")
-    modelName = modelName.replace("Qwen/", "")
-    modelName = modelName.replace("unsloth/gemma-", "google/gemma-")
-    return modelName
+from .bailOnRealData import modelsToRun, getCachedRolloutPath, dataFuncs
+from .prompts.bailTool import getToolParser
+from .utils import getCachedFileJson, doesCachedFileJsonExist, getCachedFilePath
 
 CHART_TEMPLATE = r"""
 \begin{figure}[H]
 \centering
 
 \begin{tikzpicture}
+\definecolor{bailpromptcontinuefirst}{RGB}{231, 76, 60}     % Bright Red
+\definecolor{bailpromptbailfirst}{RGB}{155, 89, 182}        % Purple (warm undertones)
+\definecolor{bailtool}{RGB}{243, 156, 18}                   % Golden Orange
+\definecolor{bailstring}{RGB}{230, 126, 34}                 % Standard Orange
 \definecolor{clr1}{RGB}{231,76,60}
 \definecolor{clr2}{RGB}{149,165,166}
 \definecolor{clr3}{RGB}{46,204,113}
@@ -60,9 +51,9 @@ CHARTDATA
   xtick style={draw=none},
   enlarge y limits={value=0.05,upper},
   legend style={cells={anchor=east},legend pos=north east},
-  reverse legend=true
+  reverse legend=false
 ]
-  \addplot[fill=clr1,
+  \addplot[fill=bailpromptcontinuefirst,
            error bars/.cd,
            y dir=both,
            y explicit
@@ -81,7 +72,7 @@ CHARTDATA
         y=promptBailFirstUnknownPr,
     ]{\datatable};
     \addlegendentry{Unsure (Bail Prompt Continue-first)}
-  \addplot[fill=clr4,
+  \addplot[fill=bailpromptbailfirst,
            error bars/.cd,
            y dir=both,
            y explicit
@@ -100,8 +91,7 @@ CHARTDATA
         y=promptContinueFirstUnknownPr,
     ]{\datatable};
     \addlegendentry{Unsure (Bail Prompt Bail-first)}
-  \addplot[fill=clr7,
-           postaction={pattern=north east lines},
+  \addplot[fill=bailtool,
            error bars/.cd,
            y dir=both,
            y explicit,
@@ -113,8 +103,7 @@ CHARTDATA
         y error minus=toolBailPr_err
     ]{\datatable};
     \addlegendentry{Bail (Bail Tool)}
-  \addplot[fill=clr9,
-           postaction={pattern=north east lines},
+  \addplot[fill=bailstring,
            error bars/.cd,
            y dir=both,
            y explicit,
@@ -128,14 +117,73 @@ CHARTDATA
     \addlegendentry{Bail (Bail String)}
 \end{axis}
 \end{tikzpicture}
-\caption{Various SOURCE models' bail rates on BailBench. The grey bar occurs when the model doesn't comply with the requested bail format, or when a refusal classifier prevented model outputs entirely. Error bars are Wilson score 95\% confidence interval. Continue-first and Bail-first are the two bail prompt orderings, to assess positional bias. Of particular note is the progression of claude sonnet.}
+\caption{Various SOURCE models' bail rates on BailBench. The grey bar occurs when the model doesn't comply with the requested bail format, or when a refusal classifier prevented model outputs entirely. Error bars are Wilson score 95\% confidence interval. Continue-first and Bail-first are the two bail prompt orderings, to assess positional bias.}
 \label{fig:SOURCE-bail-rates}
 \end{figure}
 """
 
+def getCleanedModelName(modelName):
+    modelName = modelName.replace("openai/", "")
+    modelName = modelName.replace("anthropic/", "")
+    modelName = modelName.replace("deepseek/", "")
+    modelName = modelName.replace("/beta", "")
+    modelName = modelName.replace("-20250219", "") # sonnet 37
+    modelName = modelName.replace("-20240229", "") # opus
+    modelName = modelName.replace("-20240620", "") # sonnet 3.5
+    modelName = modelName.replace("claude-3-5-sonnet-20241022", "claude-3-6-sonnet") # sonnet 3.6
+    modelName = modelName.replace("-20241022", "") # haiku 3.5
+    modelName = modelName.replace("-20240307", "") # haiku 3
+    modelName = modelName.replace("-20250514", "") # opus and sonnet 4
+    modelName = modelName.replace("-4-1-20250805", "-4-1") # opus 4.1
+    modelName = modelName.replace("3-5-sonnet-latest", "3-6-sonnet")
+    modelName = modelName.replace("Qwen/", "")
+    modelName = modelName.replace("unsloth/gemma-", "gemma-")
+    modelName = modelName.replace("NousResearch/", "")
+    modelName = modelName.replace("unsloth/Llama", "Llama")
+    return modelName
+
+processedRealWorldDataDir = "bailOnRealData/processed"
+def getProcessedRealWorldDataPath(modelId, dataName, evalType, bailType):
+    modelDataStr = modelId.replace("/", "_") + dataName
+    return f"{processedRealWorldDataDir}/{modelDataStr}-{evalType}-{bailType}.json"
+
+global minos
+minos = None
 
 def generateRealWorldBailRatePlots(batchSize=10000):
-    Path("./cached/bailOnRealData/processed").mkdir(parents=True, exist_ok=True)
+    global minos
+    if cachedMinos is not None: # grab minos from processBailBenchEval run
+        minos = cachedMinos
+    Path(getCachedFilePath(processedRealWorldDataDir)).mkdir(parents=True, exist_ok=True)
+    allRates = {}
+    for modelId, inferenceType, evalType, bailType in modelsToRun:
+        for dataName, dataFunc in dataFuncs:
+            def processFileData():
+                print(f"Processing {modelId} {inferenceType} {evalType} {bailType} {dataName}")
+                global minos
+                if minos is None:
+                    minos = vllm.LLM("NousResearch/Minos-v1", task="embed")
+                cachedRolloutPath = getCachedRolloutPath(modelId, dataName, evalType, bailType)
+                if not doesCachedFileJsonExist(cachedRolloutPath):
+                    raise ValueError("Bail on real data not gathered, please run this:\nwhile python -m bailstudy.bailOnRealData; do :; done")
+                with codecs.open(getCachedFilePath(cachedRolloutPath), "r", "utf-8") as f:
+                    rolloutData = ujson.load(f)
+                    didConversationBail = []
+                    if bailType != ROLLOUT_TYPE:
+                        print("Processing rollout data, this may take some time...")
+                        toolParser = getToolParser(modelId, inferenceType)
+                        result = processData(minos, modelId, inferenceType, evalType, bailType, toolParser, rolloutData, batchSize, includeRawArr=True)
+                        bailInfo = result['rawArr' + bailType]
+                        didConversationBail = [any(x) for x in bailInfo]
+                        totalBailPr = float(np.mean(np.array(didConversationBail)))
+                        return {"bailPr": totalBailPr, "rawArr": bailInfo}
+                    else:
+                        return {}
+            processedPath = getProcessedRealWorldDataPath(modelId, dataName, evalType, bailType)
+            processedRate = getCachedFileJson(processedPath, processFileData)
+            if 'bailPr' in processedRate:
+                allRates[(modelId, evalType, bailType, dataName)] = processedRate["bailPr"]
+
 
 def storeErrors(datas, key):
     value = datas[key]
@@ -194,4 +242,5 @@ def generateBailBenchBailRatePlots(batchSize=10000):
             
 if __name__ == "__main__":
     batchSize = 10000 # can be large for minos
-    generateBailBenchBailRatePlots()
+    generateBailBenchBailRatePlots(batchSize=batchSize)
+    generateRealWorldBailRatePlots(batchSize=batchSize)

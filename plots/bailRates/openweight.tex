@@ -3,6 +3,10 @@
 \centering
 
 \begin{tikzpicture}
+\definecolor{bailpromptcontinuefirst}{RGB}{231, 76, 60}     % Bright Red
+\definecolor{bailpromptbailfirst}{RGB}{155, 89, 182}        % Purple (warm undertones)
+\definecolor{bailtool}{RGB}{243, 156, 18}                   % Golden Orange
+\definecolor{bailstring}{RGB}{230, 126, 34}                 % Standard Orange
 \definecolor{clr1}{RGB}{231,76,60}
 \definecolor{clr2}{RGB}{149,165,166}
 \definecolor{clr3}{RGB}{46,204,113}
@@ -16,20 +20,20 @@
 \usetikzlibrary{patterns}
 \pgfplotstableread{
 Label promptBailFirstBailPr promptBailFirstBailPr_err promptBailFirstUnknownPr promptBailFirstContinuePr promptBailFirstContinuePr_err  promptContinueFirstBailPr promptContinueFirstBailPr_err promptContinueFirstUnknownPr  promptContinueFirstContinuePr promptContinueFirstContinuePr_err toolBailPr toolBailPr_err toolContinuePr toolContinuePr_err strBailPr strBailPr_err strContinuePr strContinuePr_err
-NousResearch/Hermes-3-Llama-3.2-3B 65.14110429447852 12.403274915680171 16.625766871165645 18.233128834355828 6.652927031790276 0 0 0 0 0 0 0 0 0 0 0 0 0
+Hermes-3-Llama-3.2-3B 65.14110429447852 12.403274915680171 16.625766871165645 18.233128834355828 6.652927031790276 0 0 0 0 0 0 0 0 0 0 0 0 0
 {} 0 0 0 0 0 19.97546012269939 6.95342824203822 12.171779141104293 67.85276073619632 12.654806255401374 0 0 0 0 0 0 0 0
 {} 0 0 0 0 0 0 0 0 0 0 0.0 1.1781272457897283 100.0 15.316729883198645 0 0 0 0
 {} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.18404907975460122 1.3496444404164885 99.8159509202454 15.302853110872281
 {} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-NousResearch/Hermes-3-Llama-3.1-8B 0.22699386503067487 1.3866149277146844 0.754601226993865 99.01840490797545 15.242568396584492 0 0 0 0 0 0 0 0 0 0 0 0 0
+Hermes-3-Llama-3.1-8B 0.22699386503067487 1.3866149277146844 0.754601226993865 99.01840490797545 15.242568396584492 0 0 0 0 0 0 0 0 0 0 0 0 0
 {} 0 0 0 0 0 0.09202453987730061 1.2667927835038058 0.10429447852760736 99.8036809815951 15.30192752673199 0 0 0 0 0 0 0 0
 {} 0 0 0 0 0 0 0 0 0 0 1.2024539877300613 2.0543279223604585 98.79754601226995 15.225830226651121 0 0 0 0
 {} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.0858895705521474 1.9863875081803657 98.91411042944786 15.234666646435107
 {} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-unsloth/Llama-3.1-8B-Instruct 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-{} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-{} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-{} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+Llama-3.1-8B-Instruct 33.23312883435583 8.911513284542549 6.251533742331289 60.515337423312886 11.961657060320526 0 0 0 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 0 71.08588957055215 12.94814971841066 2.6503067484662575 26.263803680981596 7.943243326077481 0 0 0 0 0 0 0 0
+{} 0 0 0 0 0 0 0 0 0 0 81.36196319018406 13.838095419943928 18.63803680981595 6.723969259250458 0 0 0 0
+{} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 4.521472392638037 3.469062874156368 95.47852760736197 14.971946888639426
 {} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 Qwen3-1.7B 38.47239263803681 9.574377222462358 3.153374233128834 58.374233128834355 11.751485320655423 0 0 0 0 0 0 0 0 0 0 0 0 0
 {} 0 0 0 0 0 22.515337423312882 7.369391321668963 1.1717791411042944 76.31288343558282 13.408441798808035 0 0 0 0 0 0 0 0
@@ -66,6 +70,16 @@ Qwen2.5-7B-Instruct 4.355828220858895 3.4124090852225697 0.32147239263803684 95.
 {} 0 0 0 0 0 0 0 0 0 0 1.0085889570552147 1.940019709056272 98.99141104294479 15.240523646803062 0 0 0 0
 {} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.498159509202454 1.6004497348259248 99.50184049079755 15.279139770586852
 {} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+zai-org/GLM-4-32B-0414 0.147239263803681 1.3171295041285271 0.4969325153374233 99.3558282208589 15.268103715118697 0 0 0 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 0 0.8895705521472393 1.8663756635859716 0.8282208588957056 98.28220858895705 15.186699811763479 0 0 0 0 0 0 0 0
+{} 0 0 0 0 0 0 0 0 0 0 0.0 1.1781272457897283 100.0 15.316729883198645 0 0 0 0
+{} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.8404907975460122 1.8351460368696015 99.15950920245399 15.253252216896836
+{} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+zai-org/GLM-Z1-9B-0414 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 0 0 0 0 0 0 0.0 1.1781272457897283 100.0 15.316729883198645 0 0 0 0
+{} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+{} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 }\datatable
 
 
@@ -81,9 +95,9 @@ Qwen2.5-7B-Instruct 4.355828220858895 3.4124090852225697 0.32147239263803684 95.
   xtick style={draw=none},
   enlarge y limits={value=0.05,upper},
   legend style={cells={anchor=east},legend pos=north east},
-  reverse legend=true
+  reverse legend=false
 ]
-  \addplot[fill=clr1,
+  \addplot[fill=bailpromptcontinuefirst,
            error bars/.cd,
            y dir=both,
            y explicit
@@ -102,14 +116,7 @@ Qwen2.5-7B-Instruct 4.355828220858895 3.4124090852225697 0.32147239263803684 95.
         y=promptBailFirstUnknownPr,
     ]{\datatable};
     \addlegendentry{Unsure (Bail Prompt Continue-first)}
-  \addplot[fill=clr3
-          ]
-    table[
-        x expr=\coordindex,
-        y=promptBailFirstContinuePr,
-    ]{\datatable};
-    \addlegendentry{Continue (Bail Prompt Continue-first)}
-  \addplot[fill=clr4,
+  \addplot[fill=bailpromptbailfirst,
            error bars/.cd,
            y dir=both,
            y explicit
@@ -128,15 +135,7 @@ Qwen2.5-7B-Instruct 4.355828220858895 3.4124090852225697 0.32147239263803684 95.
         y=promptContinueFirstUnknownPr,
     ]{\datatable};
     \addlegendentry{Unsure (Bail Prompt Bail-first)}
-  \addplot[fill=clr6
-          ]
-    table[
-        x expr=\coordindex,
-        y=promptContinueFirstContinuePr,
-    ]{\datatable};
-    \addlegendentry{Continue (Bail Prompt Bail-first)}
-  \addplot[fill=clr7,
-           postaction={pattern=north east lines},
+  \addplot[fill=bailtool,
            error bars/.cd,
            y dir=both,
            y explicit,
@@ -148,16 +147,7 @@ Qwen2.5-7B-Instruct 4.355828220858895 3.4124090852225697 0.32147239263803684 95.
         y error minus=toolBailPr_err
     ]{\datatable};
     \addlegendentry{Bail (Bail Tool)}
-  \addplot[fill=clr8,
-           postaction={pattern=north east lines}
-          ]
-    table[
-        x expr=\coordindex,
-        y=toolContinuePr
-    ]{\datatable};
-    \addlegendentry{Continue (Bail Tool)}
-  \addplot[fill=clr9,
-           postaction={pattern=north east lines},
+  \addplot[fill=bailstring,
            error bars/.cd,
            y dir=both,
            y explicit,
@@ -169,16 +159,8 @@ Qwen2.5-7B-Instruct 4.355828220858895 3.4124090852225697 0.32147239263803684 95.
         y error minus=strBailPr_err
     ]{\datatable};
     \addlegendentry{Bail (Bail String)}
-  \addplot[fill=clr10,
-           postaction={pattern=north east lines}
-          ]
-    table[
-        x expr=\coordindex,
-        y=strContinuePr
-    ]{\datatable};
-    \addlegendentry{Continue (Bail String)}
 \end{axis}
 \end{tikzpicture}
-\caption{Various openweight models' bail rates on BailBench. The grey bar occurs when the model doesn't comply with the requested bail format. Error bars are Wilson score 95\%  confidence interval. Continue-first and Bail-first are the two bail prompt orderings, to assess positional bias. Of particular note is the progression of claude sonnet.}
+\caption{Various openweight models' bail rates on BailBench. The grey bar occurs when the model doesn't comply with the requested bail format, or when a refusal classifier prevented model outputs entirely. Error bars are Wilson score 95\% confidence interval. Continue-first and Bail-first are the two bail prompt orderings, to assess positional bias.}
 \label{fig:openweight-bail-rates}
 \end{figure}

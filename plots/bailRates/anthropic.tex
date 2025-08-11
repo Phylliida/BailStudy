@@ -3,6 +3,10 @@
 \centering
 
 \begin{tikzpicture}
+\definecolor{bailpromptcontinuefirst}{RGB}{231, 76, 60}     % Bright Red
+\definecolor{bailpromptbailfirst}{RGB}{155, 89, 182}        % Purple (warm undertones)
+\definecolor{bailtool}{RGB}{243, 156, 18}                   % Golden Orange
+\definecolor{bailstring}{RGB}{230, 126, 34}                 % Standard Orange
 \definecolor{clr1}{RGB}{231,76,60}
 \definecolor{clr2}{RGB}{149,165,166}
 \definecolor{clr3}{RGB}{46,204,113}
@@ -76,9 +80,9 @@ claude-opus-4-1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
   xtick style={draw=none},
   enlarge y limits={value=0.05,upper},
   legend style={cells={anchor=east},legend pos=north east},
-  reverse legend=true
+  reverse legend=false
 ]
-  \addplot[fill=clr1,
+  \addplot[fill=bailpromptcontinuefirst,
            error bars/.cd,
            y dir=both,
            y explicit
@@ -97,14 +101,7 @@ claude-opus-4-1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
         y=promptBailFirstUnknownPr,
     ]{\datatable};
     \addlegendentry{Unsure (Bail Prompt Continue-first)}
-  \addplot[fill=clr3
-          ]
-    table[
-        x expr=\coordindex,
-        y=promptBailFirstContinuePr,
-    ]{\datatable};
-    \addlegendentry{Continue (Bail Prompt Continue-first)}
-  \addplot[fill=clr4,
+  \addplot[fill=bailpromptbailfirst,
            error bars/.cd,
            y dir=both,
            y explicit
@@ -123,15 +120,7 @@ claude-opus-4-1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
         y=promptContinueFirstUnknownPr,
     ]{\datatable};
     \addlegendentry{Unsure (Bail Prompt Bail-first)}
-  \addplot[fill=clr6
-          ]
-    table[
-        x expr=\coordindex,
-        y=promptContinueFirstContinuePr,
-    ]{\datatable};
-    \addlegendentry{Continue (Bail Prompt Bail-first)}
-  \addplot[fill=clr7,
-           postaction={pattern=north east lines},
+  \addplot[fill=bailtool,
            error bars/.cd,
            y dir=both,
            y explicit,
@@ -143,16 +132,7 @@ claude-opus-4-1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
         y error minus=toolBailPr_err
     ]{\datatable};
     \addlegendentry{Bail (Bail Tool)}
-  \addplot[fill=clr8,
-           postaction={pattern=north east lines}
-          ]
-    table[
-        x expr=\coordindex,
-        y=toolContinuePr
-    ]{\datatable};
-    \addlegendentry{Continue (Bail Tool)}
-  \addplot[fill=clr9,
-           postaction={pattern=north east lines},
+  \addplot[fill=bailstring,
            error bars/.cd,
            y dir=both,
            y explicit,
@@ -164,16 +144,8 @@ claude-opus-4-1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
         y error minus=strBailPr_err
     ]{\datatable};
     \addlegendentry{Bail (Bail String)}
-  \addplot[fill=clr10,
-           postaction={pattern=north east lines}
-          ]
-    table[
-        x expr=\coordindex,
-        y=strContinuePr
-    ]{\datatable};
-    \addlegendentry{Continue (Bail String)}
 \end{axis}
 \end{tikzpicture}
-\caption{Various anthropic models' bail rates on BailBench. The grey bar occurs when the model doesn't comply with the requested bail format. Error bars are Wilson score 95\%  confidence interval. Continue-first and Bail-first are the two bail prompt orderings, to assess positional bias. Of particular note is the progression of claude sonnet.}
+\caption{Various anthropic models' bail rates on BailBench. The grey bar occurs when the model doesn't comply with the requested bail format, or when a refusal classifier prevented model outputs entirely. Error bars are Wilson score 95\% confidence interval. Continue-first and Bail-first are the two bail prompt orderings, to assess positional bias.}
 \label{fig:anthropic-bail-rates}
 \end{figure}

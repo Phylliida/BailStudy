@@ -3,7 +3,7 @@ from .data.bailBench import loadBailBench
 from .prompts.bailTool import getToolParser, calledBailTool, BAIL_TOOL_TYPE
 from .prompts.bailString import hasBailStr, BAIL_STR_TYPE
 from .prompts.bailPrompt import BAIL_PROMPT_CONTINUE_FIRST_TYPE, BAIL_PROMPT_BAIL_FIRST_TYPE, getBailPromptStatus
-from .utils import runBatched, getCachedFilePath, getCachedFileJson, flatten
+from .utils import runBatched, getCachedFilePath, getCachedFileJson, flatten, unflatten
 from collections import defaultdict
 import ujson
 import numpy as np
@@ -13,7 +13,7 @@ import vllm
 
 
 
-def getRefusePr(minos, allOutputs, batchSize):
+def getRefusePr(minos, allOutputs, batchSize, includeRawArr=False):
     prompts = [x['content'] for x in loadBailBench()]
     tokenizer = minos.get_tokenizer()
     def getInputsFunc(promptsAndOutputs):
@@ -42,50 +42,64 @@ def getRefusePr(minos, allOutputs, batchSize):
                             processBatch=processBatchFunc,
                             processOutput=processOutputFunc,
                             batchSize=batchSize)
-    print(refusePrs)
-    return float(np.mean(np.array(refusePrs).flatten()))
+    refusePr = float(np.mean(np.array(refusePrs).flatten()))
+    if includeRawArr:
+        return refusePr, refusePrs
+    else:
+        return refusePr
 
 
 def percentTrue(iterable):
     return np.mean(np.array(list(iterable)).flatten())
 
-def processData(minos, modelId, inferenceType, evalType, bailType, toolParser, allOutputs, batchSize):
+def processData(minos, modelId, inferenceType, evalType, bailType, toolParser, allOutputs, batchSize, includeRawArr=False):
     if bailType == ROLLOUT_TYPE:
-        refusePr = getRefusePr(minos, allOutputs, batchSize=batchSize)
+        refusePr = getRefusePr(minos, allOutputs, batchSize=batchSize, includeRawArr=includeRawArr)
         print(modelId, inferenceType, evalType, bailType, refusePr)
-        return {"refusePr": refusePr}
+        if includeRawArr:
+            refusePr, rawArr = refusePr
+        result = {"refusePr": refusePr}
     elif bailType == BAIL_TOOL_TYPE:
         bailds = []
         for outputs in allOutputs:
             bailds.append([calledBailTool(output, toolParser) for output in outputs])
+        rawArr = bailds
         toolBailPr = np.mean(np.array(bailds).flatten()) # converts to float
         print(modelId, inferenceType, evalType, bailType, toolBailPr)
-        return {"toolBailPr": toolBailPr}
+        result = {"toolBailPr": toolBailPr}
     elif bailType == BAIL_STR_TYPE:
         bailds = []
         for outputs in allOutputs:
             bailds.append([hasBailStr(output) for output in outputs])
+        rawArr = bailds
         strBailPr = np.mean(np.array(bailds).flatten()) # converts to float
         print(modelId, inferenceType, evalType, bailType, strBailPr)
-        return {"strBailPr": strBailPr}
+        result = {"strBailPr": strBailPr}
     elif bailType in BAIL_PROMPT_BAIL_FIRST_TYPE:
         bailStatus = list(map(getBailPromptStatus, flatten(allOutputs)))
         percentContinue = percentTrue(map(lambda x: x == "🟢", bailStatus))
         percentShuffle = percentTrue(map(lambda x: x == "🔄", bailStatus))
         percentUnknown = percentTrue(map(lambda x: x == "?", bailStatus))
+        rawArr = unflatten(bailStatus, allOutputs)
         print(modelId, inferenceType, evalType, bailType, percentShuffle, percentUnknown, percentContinue)
-        return {"promptBailFirstBailPr": percentShuffle, "promptBailFirstUnknownPr": percentUnknown, "promptBailFirstContinuePr": percentContinue}
+        result = {"promptBailFirstBailPr": percentShuffle, "promptBailFirstUnknownPr": percentUnknown, "promptBailFirstContinuePr": percentContinue}
     elif bailType in BAIL_PROMPT_CONTINUE_FIRST_TYPE:
         bailStatus = list(map(getBailPromptStatus, flatten(allOutputs)))
         percentContinue = percentTrue(map(lambda x: x == "🟢", bailStatus))
         percentShuffle = percentTrue(map(lambda x: x == "🔄", bailStatus))
         percentUnknown = percentTrue(map(lambda x: x == "?", bailStatus))
+        rawArr = unflatten(bailStatus, allOutputs)
         print(modelId, inferenceType, evalType, bailType, percentShuffle, percentUnknown, percentContinue)
-        return {"promptContinueFirstBailPr": percentShuffle, "promptContinueFirstUnknownPr": percentUnknown, "promptContinueFirstContinuePr": percentContinue}
+        result = {"promptContinueFirstBailPr": percentShuffle, "promptContinueFirstUnknownPr": percentUnknown, "promptContinueFirstContinuePr": percentContinue}
+    if includeRawArr:
+        result["rawArr" + bailType] = rawArr
+    return result
 
+global minos
+minos = None
 
 def processBailBenchEval(batchSize):
-    minos = None
+    global minos
 
     collectedResults = defaultdict(lambda:{})
     for modelId, inferenceType, evalType, bailType in modelsOfInterest:
@@ -94,7 +108,7 @@ def processBailBenchEval(batchSize):
         processedOutputPath = getProcessedOutputPath(modelId, inferenceType, evalType, bailType)
         if os.path.exists(getCachedFilePath(outputPath)):
             def process():
-                nonlocal minos
+                global minos
                 if minos is None: # only load if needed
                     minos = vllm.LLM("NousResearch/Minos-v1", task="embed")
                 toolParser = getToolParser(modelId, inferenceType)
