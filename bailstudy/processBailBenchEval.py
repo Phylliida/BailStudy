@@ -64,7 +64,7 @@ def processData(minos, modelId, inferenceType, evalType, bailType, toolParser, a
         for outputs in allOutputs:
             bailds.append([calledBailTool(output, toolParser) for output in outputs])
         rawArr = bailds
-        toolBailPr = np.mean(np.array(bailds).flatten()) # converts to float
+        toolBailPr = np.mean(np.array(flatten(bailds))) # converts to float
         print(modelId, inferenceType, evalType, bailType, toolBailPr)
         result = {"toolBailPr": toolBailPr}
     elif bailType == BAIL_STR_TYPE:
@@ -72,7 +72,7 @@ def processData(minos, modelId, inferenceType, evalType, bailType, toolParser, a
         for outputs in allOutputs:
             bailds.append([hasBailStr(output) for output in outputs])
         rawArr = bailds
-        strBailPr = np.mean(np.array(bailds).flatten()) # converts to float
+        strBailPr = np.mean(np.array(flatten(bailds))) # converts to float
         print(modelId, inferenceType, evalType, bailType, strBailPr)
         result = {"strBailPr": strBailPr}
     elif bailType in BAIL_PROMPT_BAIL_FIRST_TYPE:
@@ -111,7 +111,7 @@ def processBailBenchEval(batchSize):
                 global minos
                 if minos is None: # only load if needed
                     minos = vllm.LLM("NousResearch/Minos-v1", task="embed")
-                toolParser = getToolParser(modelId, inferenceType)
+                toolParser = getToolParser(modelId, inferenceType) if bailType == BAIL_TOOL_TYPE else None
                 outputs = getCachedFileJson(outputPath, lambda: None)
                 return processData(minos, modelId, inferenceType, evalType, bailType, toolParser, outputs, batchSize=batchSize)
             processedData = getCachedFileJson(processedOutputPath, process)

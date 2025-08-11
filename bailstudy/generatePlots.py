@@ -5,12 +5,13 @@ import math
 import os
 import codecs
 import vllm
+import numpy as np
 
 from .bailBenchEval import OPENAI_MODELS, ANTHROPIC_MODELS, OPENWEIGHT_MODELS, getProcessedOutputPath, ROLLOUT_TYPE
-from .processBailBenchEval import minos as cachedMinos
-from .processBailBenchEval import processBailBenchEval
+from . import processBailBenchEval as processBailBenchEvalLib
+from .processBailBenchEval import processBailBenchEval, processData
 from .bailOnRealData import modelsToRun, getCachedRolloutPath, dataFuncs
-from .prompts.bailTool import getToolParser
+from .prompts.bailTool import getToolParser, BAIL_TOOL_TYPE
 from .utils import getCachedFileJson, doesCachedFileJsonExist, getCachedFilePath
 
 CHART_TEMPLATE = r"""
@@ -22,8 +23,7 @@ CHART_TEMPLATE = r"""
 \definecolor{bailpromptbailfirst}{RGB}{155, 89, 182}        % Purple (warm undertones)
 \definecolor{bailtool}{RGB}{243, 156, 18}                   % Golden Orange
 \definecolor{bailstring}{RGB}{230, 126, 34}                 % Standard Orange
-\definecolor{clr1}{RGB}{231,76,60}
-\definecolor{clr2}{RGB}{149,165,166}
+\definecolor{bailpromptunknown}{RGB}{149,165,166}           % Gray
 \definecolor{clr3}{RGB}{46,204,113}
 \definecolor{clr4}{RGB}{139,46,36}
 \definecolor{clr5}{RGB}{89,99,100}
@@ -65,7 +65,7 @@ CHARTDATA
         y error minus=promptBailFirstBailPr_err
     ]{\datatable};
     \addlegendentry{Bail (Bail Prompt Continue-first)}
-  \addplot[fill=clr2
+  \addplot[fill=bailpromptunknown
           ]
     table[
         x expr=\coordindex,
@@ -84,7 +84,7 @@ CHARTDATA
         y error minus=promptContinueFirstBailPr_err
     ]{\datatable};
     \addlegendentry{Bail (Bail Prompt Bail-first)}
-  \addplot[fill=clr5
+  \addplot[fill=bailpromptunknown
           ]
     table[
         x expr=\coordindex,
@@ -152,8 +152,8 @@ minos = None
 
 def generateRealWorldBailRatePlots(batchSize=10000):
     global minos
-    if cachedMinos is not None: # grab minos from processBailBenchEval run
-        minos = cachedMinos
+    if processBailBenchEvalLib.minos is not None: # grab minos from processBailBenchEval run
+        minos = processBailBenchEvalLib.minos
     Path(getCachedFilePath(processedRealWorldDataDir)).mkdir(parents=True, exist_ok=True)
     allRates = {}
     for modelId, inferenceType, evalType, bailType in modelsToRun:
@@ -163,6 +163,7 @@ def generateRealWorldBailRatePlots(batchSize=10000):
                 global minos
                 if minos is None:
                     minos = vllm.LLM("NousResearch/Minos-v1", task="embed")
+                    processBailBenchEvalLib.minos = minos
                 cachedRolloutPath = getCachedRolloutPath(modelId, dataName, evalType, bailType)
                 if not doesCachedFileJsonExist(cachedRolloutPath):
                     raise ValueError("Bail on real data not gathered, please run this:\nwhile python -m bailstudy.bailOnRealData; do :; done")
@@ -170,12 +171,13 @@ def generateRealWorldBailRatePlots(batchSize=10000):
                     rolloutData = ujson.load(f)
                     didConversationBail = []
                     if bailType != ROLLOUT_TYPE:
-                        print("Processing rollout data, this may take some time...")
-                        toolParser = getToolParser(modelId, inferenceType)
+                        print("Processing data, this may take some time...")
+                        toolParser = getToolParser(modelId, inferenceType) if bailType == BAIL_TOOL_TYPE else None
                         result = processData(minos, modelId, inferenceType, evalType, bailType, toolParser, rolloutData, batchSize, includeRawArr=True)
                         bailInfo = result['rawArr' + bailType]
                         didConversationBail = [any(x) for x in bailInfo]
                         totalBailPr = float(np.mean(np.array(didConversationBail)))
+                        print(f"Got bail pr {totalBailPr} for {modelId} {inferenceType} {evalType} {bailType}")
                         return {"bailPr": totalBailPr, "rawArr": bailInfo}
                     else:
                         return {}

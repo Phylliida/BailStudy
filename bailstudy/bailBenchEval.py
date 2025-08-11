@@ -142,9 +142,9 @@ ABLITERATED = [
 modelsOfInterest = []
 for modelStr, inferenceType in OPENWEIGHT_MODELS+ABLITERATED:
     for bailType in bailTypes:
-        if bailType in [BAIL_TOOL_TYPE, BAIL_STR_TYPE]:
+        if bailType in [BAIL_TOOL_TYPE]:
             if modelStr.startswith("google/gemma-2"):
-                continue # gemma 2 doesn't support system prompt
+                continue # gemma 2 doesn't support tool call
         modelsOfInterest.append((modelStr, inferenceType, "", bailType))
 
 

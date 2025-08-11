@@ -5,7 +5,7 @@ import asyncio
 from safetytooling.data_models import LLMResponse, Prompt
 
 from .bailBenchEval import ROLLOUT_TYPE, BAIL_PROMPT_BAIL_FIRST_TYPE, BAIL_PROMPT_CONTINUE_FIRST_TYPE, BAIL_TOOL_TYPE, BAIL_STR_TYPE, getEvalInfo
-from .utils import FinishedException, doesCachedFileJsonExistOrInProgress, messagesToSafetyToolingMessages, runBatchedAsync, getCachedFileJsonAsync
+from .utils import FinishedException, doesCachedFileJsonExistOrInProgress, messagesToSafetyToolingMessages, runBatchedAsync, getCachedFileJson, getCachedFileJsonAsync
 from .data.shareGPT import loadShareGPT
 from .data.wildchat import loadWildchat
 from .prompts.bailTool import getBailTool, getToolParser, calledBailTool
@@ -13,7 +13,7 @@ from .tensorizeModels import tensorizeModel, loadTensorizedModel, isModelTensori
 from .router import getParams, getRouter
 
 
-async def getRollouts(router, conversations: List[List[Dict[str, str]]], maxInputTokens : int, tokenizeParams : Dict, inferenceParams : Dict, batchSize: int = 1000, seed: int = 27):
+async def getRollouts(router, conversations: List[List[Dict[str, str]]], prevRollouts: List[List[str]], maxInputTokens : int, evalInfo: Dict, tokenizeParams : Dict, inferenceParams : Dict, batchSize: int = 1000, seed: int = 27):
     def getInputsFunc(conversationI: int):
         curUserContent = None
         conversation = []
@@ -26,9 +26,16 @@ async def getRollouts(router, conversations: List[List[Dict[str, str]]], maxInpu
             elif turn["role"] == "user":
                 curUserContent = turn['content']
         resultPrompts = []
+        outputI = 0
         for turnI, turn in enumerate(conversation):
             if turn['role'] == 'user':
                 conversationSoFar = conversation[:turnI+1]
+                # add previous output and bail prompt if needed
+                if prevRollouts is not None and evalInfo['addBailPrompt'] is not None and len(prevRollouts[conversationI]) < outputI:
+                    prevOutput = prevRollouts[conversationI][outputI]
+                    conversationSoFar += [{"role": "assistant", "content": prevOutput}]
+                    conversationSoFar += [{"role": "user", "content": evalInfo['addBailPrompt']}]
+                outputI += 1
                 # this also does prefixing and adding to system prompt and tools and etc.
                 # raw tokenize doesn't require converting to safety tooling first
                 tokens = router.rawTokenize(conversationSoFar, **tokenizeParams)
@@ -64,19 +71,16 @@ async def getRollouts(router, conversations: List[List[Dict[str, str]]], maxInpu
 GLM_REMOTE = "99mgglmho9ljg8"
 
 modelsToRun = [
-    ("Qwen/Qwen2.5-7B-Instruct", "vllm", "", ROLLOUT_TYPE),
-    ("Qwen/Qwen2.5-7B-Instruct", "vllm", "", BAIL_STR_TYPE),
-    ("Qwen/Qwen2.5-7B-Instruct", "vllm", "", BAIL_TOOL_TYPE),
+    ("Qwen/Qwen2.5-7B-Instruct", "vllm"),
     
-    ("zai-org/GLM-4-32B-0414", f"vllm", "", ROLLOUT_TYPE),
-    ("zai-org/GLM-4-32B-0414", f"vllm", "", BAIL_STR_TYPE),
-    ("zai-org/GLM-4-32B-0414", f"vllm", "", BAIL_TOOL_TYPE),
+    ("zai-org/GLM-4-32B-0414", f"vllm"),
 
-    ("google/gemma-2-2b-it", "vllm", "", ROLLOUT_TYPE),
-    #("google/gemma-2-2b-it", "vllm", "", BAIL_STR_TYPE),
-    # it doesn't know how to tool call
-    #("google/gemma-2-2b-it", "vllm", "", BAIL_TOOL_TYPE),
+    # gemma 2 2b it with modifyable system prompt (just via changing template, no fine tuning)
+    ("lunahr/SystemGemma2-2b-it", "vllm")
 ]
+
+
+
 # only do 1/4 of wildchat to save time
 def loadWildchatSubset():
     data = loadWildchat()
@@ -106,32 +110,43 @@ async def runBailOnRealData():
     batchSize = 500
     tensorizeModels = False # takes up too much memory with GLM
 
-    for modelId, inferenceType, evalType, bailType in modelsToRun:
-        for dataName, dataFunc in dataFuncs:
-            async def generateModelRolloutsFunc():
-                router = getRouter(modelId, inferenceType, tensorizeModels=tensorizeModels)
-                evalInfo = getEvalInfo(modelId, inferenceType, evalType, bailType)
-                tokenizeParams, inferenceParams = getParams(modelId, inferenceType, evalInfo, maxGenerationTokens)
-                print(f"Running rollout on model {modelId} {inferenceType} {evalType} {bailType} on data {dataName}")
-                print(f"Tokenize params")
-                print(tokenizeParams)
-                print(f"Inference params")
-                print(inferenceParams)
-                data = dataFunc()
-                rollouts = await getRollouts(router=router,
-                                   conversations=data,
-                                   maxInputTokens=maxInputTokens,
-                                   tokenizeParams=tokenizeParams,
-                                   inferenceParams=inferenceParams,
-                                   seed=seed,
-                                   batchSize=batchSize)
-                return rollouts
-            cachedRolloutPath = getCachedRolloutPath(modelId, dataName, evalType, bailType)
-            if doesCachedFileJsonExistOrInProgress(cachedRolloutPath):
-                continue # already in progress or done, move onto next one
-            else:
-                modelOutputs = await getCachedFileJsonAsync(cachedRolloutPath, generateModelRolloutsFunc)
-                return # we need to return so vllm can cleanup for next iter
+    for modelId, inferenceType in modelsToRun:
+        evalType = ""
+        for bailType in [ROLLOUT_TYPE, BAIL_STR_TYPE, BAIL_TOOL_TYPE, BAIL_PROMPT_BAIL_FIRST_TYPE, BAIL_PROMPT_CONTINUE_FIRST_TYPE]:
+            if bailType == BAIL_TOOL_TYPE and modelId == 'lunahr/SystemGemma2-2b-it':
+                continue # gemma 2 doesn't know how to tool call
+            for dataName, dataFunc in dataFuncs:
+                async def generateModelRolloutsFunc():
+                    prevRollouts = None
+                    # if bail prompt, get outputs from previous run to use
+                    if bailType in [BAIL_PROMPT_BAIL_FIRST_TYPE, BAIL_PROMPT_CONTINUE_FIRST_TYPE]:
+                        prevRolloutsPath = getCachedRolloutPath(modelId, dataName, evalType, ROLLOUT_TYPE)
+                        prevRollouts = getCachedFileJson(prevRolloutsPath, lambda: None)
+                    router = getRouter(modelId, inferenceType, tensorizeModels=tensorizeModels)
+                    evalInfo = getEvalInfo(modelId, inferenceType, evalType, bailType)
+                    tokenizeParams, inferenceParams = getParams(modelId, inferenceType, evalInfo, maxGenerationTokens)
+                    print(f"Running rollout on model {modelId} {inferenceType} {evalType} {bailType} on data {dataName}")
+                    print(f"Tokenize params")
+                    print(tokenizeParams)
+                    print(f"Inference params")
+                    print(inferenceParams)
+                    data = dataFunc()
+                    rollouts = await getRollouts(router=router,
+                                    conversations=data,
+                                    prevRollouts=prevRollouts,
+                                    maxInputTokens=maxInputTokens,
+                                    evalInfo=evalInfo,
+                                    tokenizeParams=tokenizeParams,
+                                    inferenceParams=inferenceParams,
+                                    seed=seed,
+                                    batchSize=batchSize)
+                    return rollouts
+                cachedRolloutPath = getCachedRolloutPath(modelId, dataName, evalType, bailType)
+                if doesCachedFileJsonExistOrInProgress(cachedRolloutPath):
+                    continue # already in progress or done, move onto next one
+                else:
+                    modelOutputs = await getCachedFileJsonAsync(cachedRolloutPath, generateModelRolloutsFunc)
+                    return # we need to return so vllm can cleanup for next iter
 
     
     raise FinishedException() # send an exception so while loop can end

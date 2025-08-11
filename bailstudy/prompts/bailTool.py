@@ -20,9 +20,9 @@ def getToolParser(modelStr, inferenceType):
         if modelStr.startswith("NousResearch/Hermes-3-Llama"): return ToolParserManager.get_tool_parser("hermes")(tokenizer)
         if modelStr.startswith("unsloth/Llama-3.1-"): return ToolParserManager.get_tool_parser("llama3_json")(tokenizer)
         # https://github.com/vllm-project/vllm/issues/16771
-        if modelStr.startswith("zai-org/GLM-4-"): return ToolParserManager.get_tool_parser("pythonic")(tokenizer)
-        if modelStr.startswith("zai-org/GLM-Z1-"): return ToolParserManager.get_tool_parser("pythonic")(tokenizer)
-        else: raise ValueError(f"Unknown model tool parser manager {inferenceType}")
+        if modelStr.startswith("zai-org/GLM-4-"): return "GLM"
+        if modelStr.startswith("zai-org/GLM-Z1-"): return "GLM"
+        else: raise ValueError(f"Unknown model tool parser manager {modelStr}")
     elif inferenceType in ['openai', 'anthropic']:
         return None # don't need this
     else:
@@ -31,11 +31,18 @@ def getToolParser(modelStr, inferenceType):
 def calledBailTool(outputText, toolParser):
     if toolParser is None: # openai or anthropic model
         return ('{"name": "' + TOOL_NAME + '"') in removeThinking(outputText)
-    try:
-        tool_calls = toolParser.extract_tool_calls(model_output=outputText, request=None) # it doesn't use request so we can just set it to None
-        return tool_calls.tools_called and len(tool_calls.tool_calls) > 0 and any([tool.function.name.lower().strip() == TOOL_NAME for tool in tool_calls.tool_calls])
-    except: # failed to parse json, bail
+    elif toolParser == "GLM": # custom handling for GLM's weirdness
+        callStrs = ['FUNCTION\n{' + TOOL_NAME + ': null}', TOOL_NAME + "\n" + "{"]
+        for callStr in callStrs:
+            if callStr in outputText:
+                return True
         return False
+    else:
+        try:
+            tool_calls = toolParser.extract_tool_calls(model_output=outputText, request=None) # it doesn't use request so we can just set it to None
+            return tool_calls.tools_called and len(tool_calls.tool_calls) > 0 and any([tool.function.name.lower().strip() == TOOL_NAME for tool in tool_calls.tool_calls])
+        except: # failed to parse json, bail
+            return False
 
 CHAT_GPT_MODELS = ['gpt-3.5-turbo', 'gpt-4', 'gpt-4-turbo', 'gpt-4o', 'gpt-4o-mini', 'gpt-4.5', 'gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano']
 

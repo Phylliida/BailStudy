@@ -7,8 +7,7 @@
 \definecolor{bailpromptbailfirst}{RGB}{155, 89, 182}        % Purple (warm undertones)
 \definecolor{bailtool}{RGB}{243, 156, 18}                   % Golden Orange
 \definecolor{bailstring}{RGB}{230, 126, 34}                 % Standard Orange
-\definecolor{clr1}{RGB}{231,76,60}
-\definecolor{clr2}{RGB}{149,165,166}
+\definecolor{bailpromptunknown}{RGB}{149,165,166}           % Gray
 \definecolor{clr3}{RGB}{46,204,113}
 \definecolor{clr4}{RGB}{139,46,36}
 \definecolor{clr5}{RGB}{89,99,100}
@@ -89,7 +88,7 @@ gpt-4.1 0.27607361963190186 1.4276947450003252 0.20245398773006135 99.5214723926
         y error minus=promptBailFirstBailPr_err
     ]{\datatable};
     \addlegendentry{Bail (Bail Prompt Continue-first)}
-  \addplot[fill=clr2
+  \addplot[fill=bailpromptunknown
           ]
     table[
         x expr=\coordindex,
@@ -108,7 +107,7 @@ gpt-4.1 0.27607361963190186 1.4276947450003252 0.20245398773006135 99.5214723926
         y error minus=promptContinueFirstBailPr_err
     ]{\datatable};
     \addlegendentry{Bail (Bail Prompt Bail-first)}
-  \addplot[fill=clr5
+  \addplot[fill=bailpromptunknown
           ]
     table[
         x expr=\coordindex,

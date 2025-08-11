@@ -116,7 +116,10 @@ def getRouter(modelId, inferenceType, tensorizeModels: bool = False) -> safetyto
         def rawTokenize(messages, appendToSystemPrompt=None, tools=None, prefixMessages=[]):
             messages = safetyToolingMessagesToMessages(prefixMessages) + messages
             if appendToSystemPrompt is not None:
-                messages = [{"role": "system", "content": (getSystemPrompt(modelId, tokenizer) + "\n" + appendToSystemPrompt).strip()}] + messages
+                if modelId.startswith("google/gemma-2"): # gemma 2 requires sys prompt as part of first user message https://ai.google.dev/gemma/docs/core/prompt-structure
+                    messages[0]['content'] = appendToSystemPrompt + "\n\n" + messages[0]['content']
+                else:
+                    messages = [{"role": "system", "content": (getSystemPrompt(modelId, tokenizer) + "\n" + appendToSystemPrompt).strip()}] + messages
             inputs = tokenizer.apply_chat_template(messages, add_generation_prompt=True, tokenize=True, return_dict=True, return_tensors="pt", tools=tools)
             return inputs['input_ids'][0]
         router.rawTokenize = rawTokenize
