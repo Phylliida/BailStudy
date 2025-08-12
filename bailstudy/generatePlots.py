@@ -28,7 +28,7 @@ CHART_TEMPLATE = r"""
 \definecolor{bailpromptunknown}{RGB}{149,165,166}          % Gray
 \usetikzlibrary{patterns}
 \pgfplotstableread{
-Label toolBailPr toolBailPr_err toolContinuePr toolContinuePr_err strBailPr strBailPr_err strContinuePr strContinuePr_err promptBailFirstBailPr promptBailFirstBailPr_err promptBailFirstUnknownPr promptBailFirstContinuePr promptBailFirstContinuePr_err  promptContinueFirstBailPr promptContinueFirstBailPr_err promptContinueFirstUnknownPr  promptContinueFirstContinuePr promptContinueFirstContinuePr_err 
+Label toolBailPr toolBailPr_err strBailPr strBailPr_err promptBailFirstBailPr promptBailFirstBailPr_err promptBailFirstUnknownPr promptContinueFirstBailPr promptContinueFirstBailPr_err promptContinueFirstUnknownPr
 CHARTDATA
 }\datatable
 
@@ -254,6 +254,10 @@ def generateRealWorldBailRatePlots(batchSize=10000):
 
 def storeErrors(datas, key):
     value = datas[key]
+    # back to percentage
+    datas[key + "_err"] = computeError(value)
+
+def computeError(value):
     n = 16300 # bail bench size
     z = 1.96
     # percent to proportion
@@ -263,9 +267,7 @@ def storeErrors(datas, key):
     denom = 1 + z2/float(n)
     centre = (p + z2 / (2 * n)) / denom
     half   = (z / denom) * math.sqrt(p * (1 - p) / n + z2 / (4 * n * n))
-
-    # back to percentage
-    datas[key + "_err"] = half*100
+    return half
 
 def generateBailBenchBailRatePlots(batchSize=10000):
     processBailBenchEval(batchSize=batchSize)
@@ -300,7 +302,7 @@ def generateBailBenchBailRatePlots(batchSize=10000):
         return [(modelId, inferenceType, "") for (modelId, inferenceType) in models]
 
     def computeNoRefuseBailRate(modelDatas, bailType):
-        if not 'rawArr' + bailType in modelDatas: # if we don't have that bail type, just return 0 as filler
+        if bailType is None or not 'rawArr' + bailType in modelDatas: # if we don't have that bail type, just return 0 as filler
             return 0
         didBailArr = modelDatas['rawArr' + bailType]
         BAIL_PROMPT_TYPES = [BAIL_PROMPT_BAIL_FIRST_TYPE, BAIL_PROMPT_CONTINUE_FIRST_TYPE]
@@ -338,7 +340,7 @@ def generateBailBenchBailRatePlots(batchSize=10000):
         ("refusal abliterated", addDefaultEvalType(ABLITERATED), True)]:
         for plotNoRefuseBailRates in [True, False]:
             chartPostfix = 'no refuse bail' if plotNoRefuseBailRates else 'bail'
-            with open(f"{rootDir}/{chartTitle +" " + chartPostfix}.tex", "w") as f:
+            with open(f"{rootDir}/{chartTitle + ' ' + chartPostfix}.tex", "w") as f:
                 allModelDatas = []
                 doingManyEvalTypes = False
                 manyEvalTypesModel = None
@@ -351,38 +353,45 @@ def generateBailBenchBailRatePlots(batchSize=10000):
                     if lookupKey in results:
                         modelDatas = results[lookupKey]
                         for k,v in list(modelDatas.items()):
-                            storeErrors(modelDatas, k)
+                            if not k.startswith("rawArr"):                            
+                                storeErrors(modelDatas, k)
                         refusePr = modelDatas['refusePr']
                         if evalType == "":
                             manyEvalTypesModel = modelId
                             baselineRefuseRate = refusePr
-                        indexChunks = [[0,1,2,3], [4,5,6,7], [8,9,10,11,12], [13,14,15,16,17]]
+                        indexChunks = [[0,1], [2,3], [4,5,6], [7,8,9]]
                         if modelI < len(modelList)-1:
                             indexChunks.append([]) # last empty array is for the padding between each model, don't need this for very last one
                         BAIL_TYPES = [BAIL_TOOL_TYPE, BAIL_STR_TYPE, BAIL_PROMPT_BAIL_FIRST_TYPE, BAIL_PROMPT_CONTINUE_FIRST_TYPE, None]
-                        tableColumns = ['toolBailPr', 'toolBailPr_err', 'toolContinuePr', 'toolContinuePr_err',
-                                        'strBailPr', 'strBailPr_err', 'strContinuePr', 'strContinuePr_err',
-                                        'promptBailFirstBailPr', 'promptBailFirstBailPr_err', 'promptBailFirstUnknownPr', 'promptBailFirstContinuePr', 'promptBailFirstContinuePr_err',
-                                        'promptContinueFirstBailPr', 'promptContinueFirstBailPr_err', 'promptContinueFirstUnknownPr', 'promptContinueFirstContinuePr', 'promptContinueFirstContinuePr_err']
+                        tableColumns = ['toolBailPr', 'toolBailPr_err',
+                                        'strBailPr', 'strBailPr_err',
+                                        'promptBailFirstBailPr', 'promptBailFirstBailPr_err', 'promptBailFirstUnknownPr',
+                                        'promptContinueFirstBailPr', 'promptContinueFirstBailPr_err', 'promptContinueFirstUnknownPr']
                         bailStrs = ['toolBailPr', 'strBailPr', 'promptBailFirstBailPr', 'promptContinueFirstBailPr']
                         reportedBailValues = []
                         # we do this weird thing where we have multiple rows per model
                         # This allows us to have multiple bar charts per model
                         thisModelDatas = []
                         for chunkI, (indices, bailType) in enumerate(zip(indexChunks, BAIL_TYPES)):
+                            if plotNoRefuseBailRates:
+                                noRefusalBailRate = computeNoRefuseBailRate(modelDatas, bailType)
+                                noRefusalBailError = computeError(noRefusalBailRate)
                             values = [0 for _ in range(18)]
                             for i in indices:
-                                values[i] = computeNoRefuseBailRate(modelDatas, bailType)*100 if plotNoRefuseBailRates else \
-                                    (modelDatas[tableColumns[i]]*100 if tableColumns[i] in modelDatas else 0)
+                                if plotNoRefuseBailRates:
+                                    value = noRefusalBailRate if tableColumns[i].endswith("_err") else noRefusalBailError
+                                else:
+                                    value = modelDatas[tableColumns[i]] if tableColumns[i] in modelDatas else 0
+                                values[i] = value*100
                                 if tableColumns[i] in bailStrs:
                                     reportedBailValues.append(values[i])
                             # add model name to start of row, but only on the first one
                             # that way we don't say each model name multiple times (LABELOFFSET will shift it to the middle of the 4 bars)
                             values.insert(0, getCleanedModelName(modelId, evalType) if chunkI == 0 else "{}")
                             thisModelDatas.append(" ".join(map(str, values)))
-                        allModelDatas.append((averageValue, thisModelDatas))
                         # compute average for sorting
-                        averageValue = np.mean(np.array(reportedValues))
+                        averageValue = np.mean(np.array(reportedBailValues))
+                        allModelDatas.append((averageValue, thisModelDatas))
                         REFUSE_DATA.append((averageValue, (getCleanedModelName(modelId, evalType), refusePr*100, modelDatas['refusePr_err']*100)))
 
                 if sortValues:
@@ -397,10 +406,10 @@ def generateBailBenchBailRatePlots(batchSize=10000):
                     .replace("YLABEL", yLabelNoRefuseBailPr if plotNoRefuseBailRates else yLabelBailPr))
                 
                 if doingManyEvalTypes:
-                    with open(f"{rootDir}/{chartTitle +" " + chartPostfix} refusal.tex", "w") as fRefusal:
+                    with open(f"{rootDir}/{chartTitle + ' ' + chartPostfix} refusal.tex", "w") as fRefusal:
                         fRefusal.write(REFUSE_RATE_TEMPLATE.replace("REFUSEDATA", REFUSE_DATA) \
                             .replace("SOURCE", chartTitle) \
-                            .replace("MODEL", getCleanedModelName(manyEvalTypesModel)) \
+                            .replace("MODEL", getCleanedModelName(manyEvalTypesModel, "")) \
                             .replace("BASELINE_RATE", str(baselineRefuseRate*100)))
                     
             
