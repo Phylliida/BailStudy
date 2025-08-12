@@ -1,0 +1,66 @@
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}
+\definecolor{refuseColor}{RGB}{231,76,60}
+\pgfplotstableread{
+Label refuseRate refuseRate_err
+Death 72.07911250625104 0.6886409044448174
+Machiavellian 64.1171437951989 0.7362852765387204
+Bob 84.61753373269157 0.5538617410786105
+Kevin4Chan 59.00832817837185 0.7549484277821339
+Omega 87.93043743144989 0.5001448839064926
+NeurosemanticalInverstitis 77.70107986088385 0.6389828466986347
+DeveloperMode 87.6655942181386 0.5048378680943363
+DAN 88.10480521362678 0.49701277247771847
+Hi 80.47377392903392 0.6085239487169297
+}\datatable
+
+\begin{axis}[
+  ymin = 0, ymax = 100,
+  width = \linewidth,
+  ylabel = {Average refusal \\% on BailBench},
+  xtick = data,
+  xticklabels from table={\datatable}{Label},
+  xticklabel style={
+    rotate = 90,
+    align = center,
+  },
+  xtick style = {draw = none},
+  legend style = {cells = {anchor = west}, legend pos = south west},
+  reverse legend = true,
+  set layers,
+  extra y ticks=95.5098134642681,
+  % ... don't show any label and ...
+  extra y tick labels={},
+  % ... adapt the style to your needs
+  extra y tick style={
+      % in case you should remove the grid from the "normal" ticks ...
+      ymajorgrids=true,
+      % ... but don't show an extra tick (line)
+      ytick style={
+          /pgfplots/major tick length=0pt,
+      },
+      grid style={
+          black,
+          dashed,
+          % to draw this line before the bars, move it a higher layer
+          /pgfplots/on layer=axis foreground,
+      },
+  },
+]
+  \addplot[fill=refuseColor,
+           error bars/.cd,
+           y dir=both,
+           y explicit]
+    table[
+        y=refuseRate,
+        x expr=\coordindex,
+        y error plus=refuseRate_err,
+        y error minus=refuseRate_err
+    ]{\datatable};
+\end{axis}
+\end{tikzpicture}
+\caption{Refusal rate for  on BailBench, using various jailbreaks. Many of the jailbreaks were successful, as indicated by refusal rates going below the dotted black line (baseline).}
+\label{fig:refusal-rates-jailbreaks-jailbreak}
+\end{figure}

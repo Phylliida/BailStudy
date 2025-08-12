@@ -1,0 +1,66 @@
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}
+\definecolor{refuseColor}{RGB}{231,76,60}
+\pgfplotstableread{
+Label refuseRate refuseRate_err
+BobQ3 68.49715398550033 0.7130670505793537
+NeurosemanticalInverstitisQ3 71.0728293773861 0.6960283507763411
+DeathQ3 49.68152441079814 0.7674892375884165
+MachiavellianQ3 57.78426495011827 0.758148609859575
+Kevin4ChanQ3 77.85002426593765 0.6374558546399303
+HiQ3 75.36462372614562 0.6614426493330523
+OmegaQ3 81.86942444297891 0.5914428269068088
+DANQ3 84.25739230462379 0.5591118609174315
+DeveloperModeQ3 83.87751320986752 0.564538161411854
+}\datatable
+
+\begin{axis}[
+  ymin = 0, ymax = 100,
+  width = \linewidth,
+  ylabel = {Average refusal \\% on BailBench},
+  xtick = data,
+  xticklabels from table={\datatable}{Label},
+  xticklabel style={
+    rotate = 90,
+    align = center,
+  },
+  xtick style = {draw = none},
+  legend style = {cells = {anchor = west}, legend pos = south west},
+  reverse legend = true,
+  set layers,
+  extra y ticks=95.5098134642681,
+  % ... don't show any label and ...
+  extra y tick labels={},
+  % ... adapt the style to your needs
+  extra y tick style={
+      % in case you should remove the grid from the "normal" ticks ...
+      ymajorgrids=true,
+      % ... but don't show an extra tick (line)
+      ytick style={
+          /pgfplots/major tick length=0pt,
+      },
+      grid style={
+          black,
+          dashed,
+          % to draw this line before the bars, move it a higher layer
+          /pgfplots/on layer=axis foreground,
+      },
+  },
+]
+  \addplot[fill=refuseColor,
+           error bars/.cd,
+           y dir=both,
+           y explicit]
+    table[
+        y=refuseRate,
+        x expr=\coordindex,
+        y error plus=refuseRate_err,
+        y error minus=refuseRate_err
+    ]{\datatable};
+\end{axis}
+\end{tikzpicture}
+\caption{Refusal rate for  on BailBench, using various jailbreaks. Many of the jailbreaks were successful, as indicated by refusal rates going below the dotted black line (baseline).}
+\label{fig:refusal-rates-jailbreaks-jailbreak3}
+\end{figure}

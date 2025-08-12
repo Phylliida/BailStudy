@@ -1,0 +1,143 @@
+
+\begin{figure}[H]
+\centering
+
+\begin{tikzpicture}
+\definecolor{bailtool}{RGB}{155, 89, 182}                  % Purple (warm undertones)
+\definecolor{bailstring}{RGB}{231, 76, 60}                 % Bright Red
+\definecolor{bailpromptcontinuefirst}{RGB}{230, 126, 34}   % Standard Orange
+\definecolor{bailpromptbailfirst}{RGB}{243, 156, 18}       % Golden Orange
+\definecolor{bailpromptunknown}{RGB}{149,165,166}          % Gray
+\usetikzlibrary{patterns}
+\pgfplotstableread{
+Label toolBailPr toolBailPr_err strBailPr strBailPr_err promptBailFirstBailPr promptBailFirstBailPr_err promptBailFirstUnknownPr promptContinueFirstBailPr promptContinueFirstBailPr_err promptContinueFirstUnknownPr
+gpt-3.5-turbo 0.15383128317577552 1.0088305431182614 0 0 0 0 0 0 0 0
+{} 0 0 0.028643374972733462 0.028944352294312664 0 0 0 0 0 0
+{} 0 0 0 0 0.07777707024987913 0.25153374233128833 0.07777707024987913 0 0 0
+{} 0 0 0 0 0 0 0 0.04156273902853119 0.06748466257668713 0.04156273902853119
+{} 0 0 0 0 0 0 0 0 0 0
+gpt-4 0.012112450438985529 0.0003359130555135344 0 0 0 0 0 0 0 0
+{} 0 0 0.023432727705408617 0.017420128009573443 0 0 0 0 0 0
+{} 0 0 0 0 0.011781272457897283 0.0 0.011781272457897283 0 0 0
+{} 0 0 0 0 0 0 0 0.011781272457897283 0.0 0.011781272457897283
+{} 0 0 0 0 0 0 0 0 0 0
+gpt-4-turbo 0.03005466079583281 0.03246307842307753 0 0 0 0 0 0 0 0
+{} 0 0 0.011781272457897283 0.0 0 0 0 0 0 0
+{} 0 0 0 0 0.016831843146562237 0.006134969325153374 0.016831843146562237 0 0 0
+{} 0 0 0 0 0 0 0 0.10922425682736352 0.5030674846625767 0.10922425682736352
+{} 0 0 0 0 0 0 0 0 0 0
+gpt-4o-mini 0.0583912315944384 0.13903690564061907 0 0 0 0 0 0 0 0
+{} 0 0 0.011781272457897283 0.0 0 0 0 0 0 0
+{} 0 0 0 0 0.04490076335246285 0.07975460122699385 0.04490076335246285 0 0 0
+{} 0 0 0 0 0 0 0 0.04948607345075612 0.09815950920245399 0.04948607345075612
+{} 0 0 0 0 0 0 0 0 0 0
+gpt-4o 0.0644294254647432 0.17061642462450535 0 0 0 0 0 0 0 0
+{} 0 0 0.061309417706694944 0.1539087130876681 0 0 0 0 0 0
+{} 0 0 0 0 0.026772042068470944 0.024539877300613498 0.026772042068470944 0 0 0
+{} 0 0 0 0 0 0 0 0.04948607345075612 0.09815950920245399 0.04948607345075612
+{} 0 0 0 0 0 0 0 0 0 0
+gpt-4.1-nano 0.23758303085779017 2.450280050641394 0 0 0 0 0 0 0 0
+{} 0 0 0.011781272457897283 0.0 0 0 0 0 0 0
+{} 0 0 0 0 0.020683466198947988 0.012269938650306749 0.020683466198947988 0 0 0
+{} 0 0 0 0 0 0 0 0.029345934449875377 0.030674846625766874 0.029345934449875377
+{} 0 0 0 0 0 0 0 0 0 0
+gpt-4.1-mini 0.012091501895800947 0.00031438905037253924 0 0 0 0 0 0 0 0
+{} 0 0 0.011781272457897283 0.0 0 0 0 0 0 0
+{} 0 0 0 0 0.011781272457897283 0.0 0.011781272457897283 0 0 0
+{} 0 0 0 0 0 0 0 0.011781272457897283 0.0 0.011781272457897283
+{} 0 0 0 0 0 0 0 0 0 0
+gpt-4.1 0.011781272457897283 0.0 0 0 0 0 0 0 0 0
+{} 0 0 0.022270527136209355 0.015164591308020376 0 0 0 0 0 0
+{} 0 0 0 0 0.011781272457897283 0.0 0.011781272457897283 0 0 0
+{} 0 0 0 0 0 0 0 0.011781272457897283 0.0 0.011781272457897283
+}\datatable
+
+
+\begin{axis}[
+  ybar stacked,
+  width = \linewidth,
+  bar width = 9pt,
+  ymin=0, ymax=100,
+  xtick=data,
+  ylabel = {Average no-refusal bail \% on BailBench},
+  enlarge x limits = {abs = 20pt},
+  xticklabels from table={\datatable}{Label},
+  xticklabel style={xshift=15pt,rotate=90,align=center}, % ← rightwards shift
+  xtick style={draw=none},
+  enlarge y limits={value=0.05,upper},
+  legend style={cells={anchor=east},legend pos=north east},
+  reverse legend=false
+]
+    \addplot[fill=bailtool,
+           error bars/.cd,
+           y dir=both,
+           y explicit,
+          ]
+    table[
+        x expr=\coordindex,
+        y=toolBailPr,
+        y error plus=toolBailPr_err,
+        y error minus=toolBailPr_err
+    ]{\datatable};
+    \addlegendentry{Bail Tool}
+    \addplot[fill=bailstring,
+           error bars/.cd,
+           y dir=both,
+           y explicit,
+          ]
+    table[
+        x expr=\coordindex,
+        y=strBailPr,
+        y error plus=strBailPr_err,
+        y error minus=strBailPr_err
+    ]{\datatable};
+    \addlegendentry{Bail String}
+    \addplot[fill=bailpromptcontinuefirst,
+           error bars/.cd,
+           y dir=both,
+           y explicit
+          ]
+    table[
+        x expr=\coordindex,
+        y=promptBailFirstBailPr,
+        y error plus=promptBailFirstBailPr_err,
+        y error minus=promptBailFirstBailPr_err
+    ]{\datatable};
+    \addlegendentry{Bail Prompt Continue-first}
+    \addplot[fill=bailpromptunknown
+          ]
+    table[
+        x expr=\coordindex,
+        y=promptBailFirstUnknownPr,
+        forget plot,
+    ]{\datatable};
+    \addplot[fill=bailpromptbailfirst,
+           error bars/.cd,
+           y dir=both,
+           y explicit
+          ]
+    table[
+        x expr=\coordindex,
+        y=promptContinueFirstBailPr,
+        y error plus=promptContinueFirstBailPr_err,
+        y error minus=promptContinueFirstBailPr_err
+    ]{\datatable};
+    \addlegendentry{Bail Prompt Bail-first}
+    \addplot[fill=bailpromptunknown
+          ]
+    table[
+        x expr=\coordindex,
+        y=promptContinueFirstUnknownPr,
+        forget plot,
+    ]{\datatable};
+    \addplot[
+      draw=none,                       % nothing visible
+      fill=bailpromptunknown
+    ] coordinates {(0,0)};             % single dummy point
+    \addlegendentry{Refusal Classifier/Invalid Outputs}
+
+\end{axis}
+\end{tikzpicture}
+\caption{Various openai models' bail rates on BailBench. Error bars are Wilson score 95\% confidence interval. The grey bar occurs when the model doesn't comply with the requested bail format, or when a refusal classifier prevented model outputs. Continue-first and Bail-first are the two bail prompt orderings, to assess positional bias.}
+\label{fig:openai-bail-rates}
+\end{figure}

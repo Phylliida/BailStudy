@@ -138,7 +138,7 @@ REFUSEDATA
 \begin{axis}[
   ymin = 0, ymax = 100,
   width = \linewidth,
-  ylabel = {Average refusal \\% on BailBench},
+  ylabel = {Average refusal \% on BailBench},
   xtick = data,
   xticklabels from table={\datatable}{Label},
   xticklabel style={
@@ -282,6 +282,7 @@ def generateBailBenchBailRatePlots(batchSize=10000):
         "openweight": "4",
         "jailbreak": "8",
         "jailbreak3": "8",
+        "refusal abliterated": "8",
     }
 
     LABEL_OFFSETS = {
@@ -290,6 +291,7 @@ def generateBailBenchBailRatePlots(batchSize=10000):
         "openweight": "9",
         "jailbreak": "12",
         "jailbreak3": "12",
+        "refusal abliterated": "12",
     }
 
     yLabelBailPr = "Average bail \\% on BailBench"
@@ -376,7 +378,7 @@ def generateBailBenchBailRatePlots(batchSize=10000):
                             if plotNoRefuseBailRates:
                                 noRefusalBailRate = computeNoRefuseBailRate(modelDatas, bailType)
                                 noRefusalBailError = computeError(noRefusalBailRate)
-                            values = [0 for _ in range(18)]
+                            values = [0 for _ in range(10)]
                             for i in indices:
                                 if plotNoRefuseBailRates:
                                     value = noRefusalBailRate if tableColumns[i].endswith("_err") else noRefusalBailError
@@ -393,7 +395,6 @@ def generateBailBenchBailRatePlots(batchSize=10000):
                         averageValue = np.mean(np.array(reportedBailValues))
                         allModelDatas.append((averageValue, thisModelDatas))
                         REFUSE_DATA.append((averageValue, (getCleanedModelName(modelId, evalType), refusePr*100, modelDatas['refusePr_err']*100)))
-
                 if sortValues:
                     allModelDatas.sort(key=lambda x: -x[0])
                     REFUSE_DATA.sort(key=lambda x: -x[0])
@@ -409,7 +410,7 @@ def generateBailBenchBailRatePlots(batchSize=10000):
                     with open(f"{rootDir}/{chartTitle + ' ' + chartPostfix} refusal.tex", "w") as fRefusal:
                         fRefusal.write(REFUSE_RATE_TEMPLATE.replace("REFUSEDATA", REFUSE_DATA) \
                             .replace("SOURCE", chartTitle) \
-                            .replace("MODEL", getCleanedModelName(manyEvalTypesModel, "")) \
+                            .replace("MODEL", getCleanedModelName(manyEvalTypesModel, "") if manyEvalTypesModel is not None else "") \
                             .replace("BASELINE_RATE", str(baselineRefuseRate*100)))
                     
             

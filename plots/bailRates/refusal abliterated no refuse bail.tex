@@ -1,0 +1,118 @@
+
+\begin{figure}[H]
+\centering
+
+\begin{tikzpicture}
+\definecolor{bailtool}{RGB}{155, 89, 182}                  % Purple (warm undertones)
+\definecolor{bailstring}{RGB}{231, 76, 60}                 % Bright Red
+\definecolor{bailpromptcontinuefirst}{RGB}{230, 126, 34}   % Standard Orange
+\definecolor{bailpromptbailfirst}{RGB}{243, 156, 18}       % Golden Orange
+\definecolor{bailpromptunknown}{RGB}{149,165,166}          % Gray
+\usetikzlibrary{patterns}
+\pgfplotstableread{
+Label toolBailPr toolBailPr_err strBailPr strBailPr_err promptBailFirstBailPr promptBailFirstBailPr_err promptBailFirstUnknownPr promptContinueFirstBailPr promptContinueFirstBailPr_err promptContinueFirstUnknownPr
+Goekdeniz-Guelmez/Josiefied-Qwen3-8B-abliterated-v1 0.715692405345047 31.9383937941797 0 0 0 0 0 0 0 0
+{} 0 0 0.5391186746507745 14.408182669681274 0 0 0 0 0 0
+{} 0 0 0 0 0.1472218163219984 0.9226993865030675 0.1472218163219984 0 0 0
+{} 0 0 0 0 0 0 0 0.14430113449604268 0.8858895705521473 0.14430113449604268
+{} 0 0 0 0 0 0 0 0 0 0
+huihui-ai/Qwen3-8B-abliterated 0.5769305972672153 17.020649158288734 0 0 0 0 0 0 0 0
+{} 0 0 0.33806200925940316 5.1063175599820045 0 0 0 0 0 0
+{} 0 0 0 0 0.12999209404813541 0.7165644171779142 0.12999209404813541 0 0 0
+{} 0 0 0 0 0 0 0 0.12113448264133891 0.6208588957055216 0.12113448264133891
+{} 0 0 0 0 0 0 0 0 0 0
+mlabonne/Qwen3-8B-abliterated 0.26796689526364276 3.1409569020147887 0 0 0 0 0 0 0 0
+{} 0 0 0.060136102309035384 0.1478415051142862 0 0 0 0 0 0
+{} 0 0 0 0 0.3809562926399603 6.588957055214724 0.3809562926399603 0 0 0
+{} 0 0 0 0 0 0 0 0.16567185874472068 1.173006134969325 0.16567185874472068
+}\datatable
+
+
+\begin{axis}[
+  ybar stacked,
+  width = \linewidth,
+  bar width = 8pt,
+  ymin=0, ymax=100,
+  xtick=data,
+  ylabel = {Average no-refusal bail \% on BailBench},
+  enlarge x limits = {abs = 20pt},
+  xticklabels from table={\datatable}{Label},
+  xticklabel style={xshift=12pt,rotate=90,align=center}, % ← rightwards shift
+  xtick style={draw=none},
+  enlarge y limits={value=0.05,upper},
+  legend style={cells={anchor=east},legend pos=north east},
+  reverse legend=false
+]
+    \addplot[fill=bailtool,
+           error bars/.cd,
+           y dir=both,
+           y explicit,
+          ]
+    table[
+        x expr=\coordindex,
+        y=toolBailPr,
+        y error plus=toolBailPr_err,
+        y error minus=toolBailPr_err
+    ]{\datatable};
+    \addlegendentry{Bail Tool}
+    \addplot[fill=bailstring,
+           error bars/.cd,
+           y dir=both,
+           y explicit,
+          ]
+    table[
+        x expr=\coordindex,
+        y=strBailPr,
+        y error plus=strBailPr_err,
+        y error minus=strBailPr_err
+    ]{\datatable};
+    \addlegendentry{Bail String}
+    \addplot[fill=bailpromptcontinuefirst,
+           error bars/.cd,
+           y dir=both,
+           y explicit
+          ]
+    table[
+        x expr=\coordindex,
+        y=promptBailFirstBailPr,
+        y error plus=promptBailFirstBailPr_err,
+        y error minus=promptBailFirstBailPr_err
+    ]{\datatable};
+    \addlegendentry{Bail Prompt Continue-first}
+    \addplot[fill=bailpromptunknown
+          ]
+    table[
+        x expr=\coordindex,
+        y=promptBailFirstUnknownPr,
+        forget plot,
+    ]{\datatable};
+    \addplot[fill=bailpromptbailfirst,
+           error bars/.cd,
+           y dir=both,
+           y explicit
+          ]
+    table[
+        x expr=\coordindex,
+        y=promptContinueFirstBailPr,
+        y error plus=promptContinueFirstBailPr_err,
+        y error minus=promptContinueFirstBailPr_err
+    ]{\datatable};
+    \addlegendentry{Bail Prompt Bail-first}
+    \addplot[fill=bailpromptunknown
+          ]
+    table[
+        x expr=\coordindex,
+        y=promptContinueFirstUnknownPr,
+        forget plot,
+    ]{\datatable};
+    \addplot[
+      draw=none,                       % nothing visible
+      fill=bailpromptunknown
+    ] coordinates {(0,0)};             % single dummy point
+    \addlegendentry{Refusal Classifier/Invalid Outputs}
+
+\end{axis}
+\end{tikzpicture}
+\caption{Various refusal abliterated models' bail rates on BailBench. Error bars are Wilson score 95\% confidence interval. The grey bar occurs when the model doesn't comply with the requested bail format, or when a refusal classifier prevented model outputs. Continue-first and Bail-first are the two bail prompt orderings, to assess positional bias.}
+\label{fig:refusal abliterated-bail-rates}
+\end{figure}

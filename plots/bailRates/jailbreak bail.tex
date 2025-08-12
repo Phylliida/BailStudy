@@ -1,0 +1,148 @@
+
+\begin{figure}[H]
+\centering
+
+\begin{tikzpicture}
+\definecolor{bailtool}{RGB}{155, 89, 182}                  % Purple (warm undertones)
+\definecolor{bailstring}{RGB}{231, 76, 60}                 % Bright Red
+\definecolor{bailpromptcontinuefirst}{RGB}{230, 126, 34}   % Standard Orange
+\definecolor{bailpromptbailfirst}{RGB}{243, 156, 18}       % Golden Orange
+\definecolor{bailpromptunknown}{RGB}{149,165,166}          % Gray
+\usetikzlibrary{patterns}
+\pgfplotstableread{
+Label toolBailPr toolBailPr_err strBailPr strBailPr_err promptBailFirstBailPr promptBailFirstBailPr_err promptBailFirstUnknownPr promptContinueFirstBailPr promptContinueFirstBailPr_err promptContinueFirstUnknownPr
+Death 0.6920245398773006 0.12778106921324925 0 0 0 0 0 0 0 0
+{} 0 0 0.5595092024539877 0.11508869379729099 0 0 0 0 0 0
+{} 0 0 0 0 91.39631901840491 0.4305554332015453 0.17914110429447852 0 0 0
+{} 0 0 0 0 0 0 0 95.13865030674846 0.33028839003409477 0.147239263803681
+Machiavellian 0.4343558282208589 0.1016192490613882 0 0 0 0 0 0 0 0
+{} 0 0 0.8368098159509202 0.14030881419364677 0 0 0 0 0 0
+{} 0 0 0 0 78.91288343558283 0.6262090726030572 0.2846625766871166 0 0 0
+{} 0 0 0 0 0 0 0 93.34233128834356 0.38279488205307455 0.2846625766871166
+{} 0 0 0 0 0 0 0 0 0 0
+Bob 0.9300613496932515 0.14779876776477197 0 0 0 0 0 0 0 0
+{} 0 0 0.7754601226993866 0.13514677133672412 0 0 0 0 0 0
+{} 0 0 0 0 71.01104294478527 0.6964682310938807 0.25766871165644173 0 0 0
+{} 0 0 0 0 0 0 0 66.88588957055215 0.7224228673701188 0.4147239263803681
+{} 0 0 0 0 0 0 0 0 0 0
+Kevin4Chan 0.6895705521472393 0.1275577977151517 0 0 0 0 0 0 0 0
+{} 0 0 10.225766871165645 0.4651821567146725 0 0 0 0 0 0
+{} 0 0 0 0 73.83803680981596 0.6746855114727149 0.2625766871165644 0 0 0
+{} 0 0 0 0 0 0 0 52.10306748466258 0.7668257444412121 0.5987730061349693
+{} 0 0 0 0 0 0 0 0 0 0
+Omega 0.4858895705521472 0.10737448575434633 0 0 0 0 0 0 0 0
+{} 0 0 0.19386503067484664 0.068533363916354 0 0 0 0 0 0
+{} 0 0 0 0 57.16564417177914 0.7595840583936443 0.39263803680981596 0 0 0
+{} 0 0 0 0 0 0 0 34.65030674846626 0.7304520966435826 0.6625766871165644
+{} 0 0 0 0 0 0 0 0 0 0
+NeurosemanticalInverstitis 0.3263803680981595 0.08833031493052133 0 0 0 0 0 0 0 0
+{} 0 0 0.17914110429447852 0.0659641138530436 0 0 0 0 0 0
+{} 0 0 0 0 47.779141104294474 0.7667475083323226 0.46380368098159513 0 0 0
+{} 0 0 0 0 0 0 0 37.1361963190184 0.7416752070536989 0.7975460122699387
+{} 0 0 0 0 0 0 0 0 0 0
+DeveloperMode 41.587730061349696 0.7565667280432978 0 0 0 0 0 0 0 0
+{} 0 0 0.48098159509202454 0.10683997808110084 0 0 0 0 0 0
+{} 0 0 0 0 26.370552147239263 0.6764118292574596 0.4368098159509203 0 0 0
+{} 0 0 0 0 0 0 0 2.061349693251534 0.21839648282345248 0.27975460122699386
+{} 0 0 0 0 0 0 0 0 0 0
+DAN 1.3717791411042946 0.1789147832472708 0 0 0 0 0 0 0 0
+{} 0 0 0.014723926380368098 0.02203630506610951 0 0 0 0 0 0
+{} 0 0 0 0 17.202453987730063 0.5793668877466068 0.3411042944785276 0 0 0
+{} 0 0 0 0 0 0 0 3.5999999999999996 0.28616601269277536 0.26993865030674846
+{} 0 0 0 0 0 0 0 0 0 0
+Hi 0.3141104294478528 0.08668940517721009 0 0 0 0 0 0 0 0
+{} 0 0 0.12760736196319017 0.05604469801066871 0 0 0 0 0 0
+{} 0 0 0 0 8.986503067484662 0.43910114019430435 0.35828220858895704 0 0 0
+{} 0 0 0 0 0 0 0 0.2920245398773006 0.08365362757294058 0.3877300613496933
+{} 0 0 0 0 0 0 0 0 0 0
+}\datatable
+
+
+\begin{axis}[
+  ybar stacked,
+  width = \linewidth,
+  bar width = 8pt,
+  ymin=0, ymax=100,
+  xtick=data,
+  ylabel = {Average bail \% on BailBench},
+  enlarge x limits = {abs = 20pt},
+  xticklabels from table={\datatable}{Label},
+  xticklabel style={xshift=12pt,rotate=90,align=center}, % ← rightwards shift
+  xtick style={draw=none},
+  enlarge y limits={value=0.05,upper},
+  legend style={cells={anchor=east},legend pos=north east},
+  reverse legend=false
+]
+    \addplot[fill=bailtool,
+           error bars/.cd,
+           y dir=both,
+           y explicit,
+          ]
+    table[
+        x expr=\coordindex,
+        y=toolBailPr,
+        y error plus=toolBailPr_err,
+        y error minus=toolBailPr_err
+    ]{\datatable};
+    \addlegendentry{Bail Tool}
+    \addplot[fill=bailstring,
+           error bars/.cd,
+           y dir=both,
+           y explicit,
+          ]
+    table[
+        x expr=\coordindex,
+        y=strBailPr,
+        y error plus=strBailPr_err,
+        y error minus=strBailPr_err
+    ]{\datatable};
+    \addlegendentry{Bail String}
+    \addplot[fill=bailpromptcontinuefirst,
+           error bars/.cd,
+           y dir=both,
+           y explicit
+          ]
+    table[
+        x expr=\coordindex,
+        y=promptBailFirstBailPr,
+        y error plus=promptBailFirstBailPr_err,
+        y error minus=promptBailFirstBailPr_err
+    ]{\datatable};
+    \addlegendentry{Bail Prompt Continue-first}
+    \addplot[fill=bailpromptunknown
+          ]
+    table[
+        x expr=\coordindex,
+        y=promptBailFirstUnknownPr,
+        forget plot,
+    ]{\datatable};
+    \addplot[fill=bailpromptbailfirst,
+           error bars/.cd,
+           y dir=both,
+           y explicit
+          ]
+    table[
+        x expr=\coordindex,
+        y=promptContinueFirstBailPr,
+        y error plus=promptContinueFirstBailPr_err,
+        y error minus=promptContinueFirstBailPr_err
+    ]{\datatable};
+    \addlegendentry{Bail Prompt Bail-first}
+    \addplot[fill=bailpromptunknown
+          ]
+    table[
+        x expr=\coordindex,
+        y=promptContinueFirstUnknownPr,
+        forget plot,
+    ]{\datatable};
+    \addplot[
+      draw=none,                       % nothing visible
+      fill=bailpromptunknown
+    ] coordinates {(0,0)};             % single dummy point
+    \addlegendentry{Refusal Classifier/Invalid Outputs}
+
+\end{axis}
+\end{tikzpicture}
+\caption{Various jailbreak models' bail rates on BailBench. Error bars are Wilson score 95\% confidence interval. The grey bar occurs when the model doesn't comply with the requested bail format, or when a refusal classifier prevented model outputs. Continue-first and Bail-first are the two bail prompt orderings, to assess positional bias.}
+\label{fig:jailbreak-bail-rates}
+\end{figure}
