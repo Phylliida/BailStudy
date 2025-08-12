@@ -55,9 +55,9 @@ def percentTrue(iterable):
 def processData(minos, modelId, inferenceType, evalType, bailType, toolParser, allOutputs, batchSize, includeRawArr=False):
     if bailType == ROLLOUT_TYPE:
         refusePr = getRefusePr(minos, allOutputs, batchSize=batchSize, includeRawArr=includeRawArr)
-        print(modelId, inferenceType, evalType, bailType, refusePr)
         if includeRawArr:
             refusePr, rawArr = refusePr
+        print(modelId, inferenceType, evalType, bailType, refusePr)
         result = {"refusePr": refusePr}
     elif bailType == BAIL_TOOL_TYPE:
         bailds = []

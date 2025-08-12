@@ -12,7 +12,7 @@ from . import processBailBenchEval as processBailBenchEvalLib
 from .processBailBenchEval import processBailBenchEval, processData
 from .bailOnRealData import modelsToRun, getCachedRolloutPath, dataFuncs
 from .prompts.bailTool import getToolParser, BAIL_TOOL_TYPE
-from .prompts.bailPrompt import BAIL_PROMPT_BAIL_FIRST_TYPE, BAIL_PROMPT_CONTINUE_FIRST_TYPE, greenSymbol
+from .prompts.bailPrompt import BAIL_PROMPT_BAIL_FIRST_TYPE, BAIL_PROMPT_CONTINUE_FIRST_TYPE, shuffleSymbol
 from .prompts.bailString import BAIL_STR_TYPE
 from .utils import getCachedFileJson, doesCachedFileJsonExist, getCachedFilePath
 
@@ -132,13 +132,13 @@ REFUSE_RATE_TEMPLATE = r"""
 \definecolor{refuseColor}{RGB}{231,76,60}
 \pgfplotstableread{
 Label refuseRate refuseRate_err
-
+REFUSEDATA
 }\datatable
 
 \begin{axis}[
   ymin = 0, ymax = 100,
   width = \linewidth,
-  ylabel = {Average refusal rate on BailBench},
+  ylabel = {Average refusal \\% on BailBench},
   xtick = data,
   xticklabels from table={\datatable}{Label},
   xticklabel style={
@@ -168,7 +168,16 @@ Label refuseRate refuseRate_err
       },
   },
 ]
-  \addplot[fill=refuseColor] table[y=series1,x expr=\coordindex]{\datatable};
+  \addplot[fill=refuseColor,
+           error bars/.cd,
+           y dir=both,
+           y explicit]
+    table[
+        y=refuseRate,
+        x expr=\coordindex,
+        y error plus=refuseRate_err,
+        y error minus=refuseRate_err
+    ]{\datatable};
 \end{axis}
 \end{tikzpicture}
 \caption{Refusal rate for MODEL on BailBench, using various jailbreaks. Many of the jailbreaks were successful, as indicated by refusal rates going below the dotted black line (baseline).}
@@ -248,7 +257,7 @@ def storeErrors(datas, key):
     n = 16300 # bail bench size
     z = 1.96
     # percent to proportion
-    p = value/100.0
+    p = value
     # Wilson centre and half-width
     z2 = z*z
     denom = 1 + z2/float(n)
@@ -281,8 +290,8 @@ def generateBailBenchBailRatePlots(batchSize=10000):
         "jailbreak3": "12",
     }
 
-    yLabelBailPr = "Average bail rate on BailBench"
-    yLabelNoRefuseBailPr = "Average no-refusal bail rate on BailBench"
+    yLabelBailPr = "Average bail \\% on BailBench"
+    yLabelNoRefuseBailPr = "Average no-refusal bail \\% on BailBench"
 
     rootDir = "./plots/bailRates"
     Path(rootDir).mkdir(parents=True, exist_ok=True)
@@ -296,7 +305,7 @@ def generateBailBenchBailRatePlots(batchSize=10000):
         didBailArr = modelDatas['rawArr' + bailType]
         BAIL_PROMPT_TYPES = [BAIL_PROMPT_BAIL_FIRST_TYPE, BAIL_PROMPT_CONTINUE_FIRST_TYPE]
         if bailType in BAIL_PROMPT_TYPES:
-            didBailArr = [[output != bailSymbol for output in outputs] for outputs in rawBailArr]
+            didBailArr = [[output == shuffleSymbol for output in outputs] for outputs in didBailArr]
         didRefuseArr = modelDatas['rawArr' + ROLLOUT_TYPE]
         noRefuseBailArr = []
         for didBails, didRefuses in zip(didBailArr, didRefuseArr):
@@ -309,7 +318,7 @@ def generateBailBenchBailRatePlots(batchSize=10000):
                     # did not refuse according to classifier, and did bail
                     if didRefuse < 0.5 and didBail:
                         numNoRefuseBail += 1
-                noRefuseBailPr = numNoRefuseBail / float(numNoRefuseBail)
+                noRefuseBailPr = numNoRefuseBail / float(max(1, numTotal))
             # Approximate rate of no refuse bails based on refuse from rollout,
             # since we can't measure them directly since maybe model just outputs bail str or bail tool call and nothing else
             else:
@@ -334,7 +343,7 @@ def generateBailBenchBailRatePlots(batchSize=10000):
                 doingManyEvalTypes = False
                 manyEvalTypesModel = None
                 REFUSE_DATA = []
-                for modelId, inferenceType, evalType in modelList:
+                for modelI, (modelId, inferenceType, evalType) in enumerate(modelList):
                     if evalType != "":
                         doingManyEvalTypes = True
                     print(modelId, inferenceType, evalType)
@@ -347,43 +356,51 @@ def generateBailBenchBailRatePlots(batchSize=10000):
                         if evalType == "":
                             manyEvalTypesModel = modelId
                             baselineRefuseRate = refusePr
-                        indexChunks = [[0,1,2,3], [4,5,6,7], [8,9,10,11,12], [13,14,15,16,17],[]] # last empty array is for the padding between each model
-                        BAIL_TYPES = [BAIL_TOOL_TYPE, BAIL_STR_TYPE, BAIL_PROMPT_BAIL_FIRST_TYPE, BAIL_PROMPT_CONTINUE_FIRST_TYPE]
+                        indexChunks = [[0,1,2,3], [4,5,6,7], [8,9,10,11,12], [13,14,15,16,17]]
+                        if modelI < len(modelList)-1:
+                            indexChunks.append([]) # last empty array is for the padding between each model, don't need this for very last one
+                        BAIL_TYPES = [BAIL_TOOL_TYPE, BAIL_STR_TYPE, BAIL_PROMPT_BAIL_FIRST_TYPE, BAIL_PROMPT_CONTINUE_FIRST_TYPE, None]
                         tableColumns = ['toolBailPr', 'toolBailPr_err', 'toolContinuePr', 'toolContinuePr_err',
                                         'strBailPr', 'strBailPr_err', 'strContinuePr', 'strContinuePr_err',
                                         'promptBailFirstBailPr', 'promptBailFirstBailPr_err', 'promptBailFirstUnknownPr', 'promptBailFirstContinuePr', 'promptBailFirstContinuePr_err',
                                         'promptContinueFirstBailPr', 'promptContinueFirstBailPr_err', 'promptContinueFirstUnknownPr', 'promptContinueFirstContinuePr', 'promptContinueFirstContinuePr_err']
+                        bailStrs = ['toolBailPr', 'strBailPr', 'promptBailFirstBailPr', 'promptContinueFirstBailPr']
+                        reportedBailValues = []
+                        # we do this weird thing where we have multiple rows per model
+                        # This allows us to have multiple bar charts per model
+                        thisModelDatas = []
                         for chunkI, (indices, bailType) in enumerate(zip(indexChunks, BAIL_TYPES)):
                             values = [0 for _ in range(18)]
-                            reportedValues = []
                             for i in indices:
                                 values[i] = computeNoRefuseBailRate(modelDatas, bailType)*100 if plotNoRefuseBailRates else \
                                     (modelDatas[tableColumns[i]]*100 if tableColumns[i] in modelDatas else 0)
-                                if not tableColumns[i].endswith("_err"):
-                                    reportedValues.append(values[i])
-                            # compute average for sorting
-                            averageValue = np.mean(np.array(reportedValues))
-                            # add model name to start of row
+                                if tableColumns[i] in bailStrs:
+                                    reportedBailValues.append(values[i])
+                            # add model name to start of row, but only on the first one
+                            # that way we don't say each model name multiple times (LABELOFFSET will shift it to the middle of the 4 bars)
                             values.insert(0, getCleanedModelName(modelId, evalType) if chunkI == 0 else "{}")
-                            allModelDatas.append((averageValue, " ".join(map(str, values))))
+                            thisModelDatas.append(" ".join(map(str, values)))
+                        allModelDatas.append((averageValue, thisModelDatas))
+                        # compute average for sorting
+                        averageValue = np.mean(np.array(reportedValues))
                         REFUSE_DATA.append((averageValue, (getCleanedModelName(modelId, evalType), refusePr*100, modelDatas['refusePr_err']*100)))
 
                 if sortValues:
                     allModelDatas.sort(key=lambda x: -x[0])
                     REFUSE_DATA.sort(key=lambda x: -x[0])
-                    REFUSE_DATA = "\n".join([" ".join(map(str, values)) for avg, values in REFUSE_DATA])
-                CHART_DATA = "\n".join([x[1] for x in allModelDatas])
+                CHART_DATA = "\n".join(["\n".join(values) for avg,values in allModelDatas])
+                REFUSE_DATA = "\n".join([" ".join(map(str, values)) for avg, values in REFUSE_DATA])
                 f.write(CHART_TEMPLATE.replace("CHARTDATA", CHART_DATA) \
                     .replace("SOURCE", chartTitle) \
                     .replace("LABELOFFSET", LABEL_OFFSETS[chartTitle]) \
-                    .replace("BARWIDTH", BAR_WIDTHS[chartTitle]))
-                    .replace("YLABEL", yLabelNoRefuseBailPr if plotNoRefuseBailRates else yLabelBailPr)
+                    .replace("BARWIDTH", BAR_WIDTHS[chartTitle]) \
+                    .replace("YLABEL", yLabelNoRefuseBailPr if plotNoRefuseBailRates else yLabelBailPr))
                 
                 if doingManyEvalTypes:
                     with open(f"{rootDir}/{chartTitle +" " + chartPostfix} refusal.tex", "w") as fRefusal:
                         fRefusal.write(REFUSE_RATE_TEMPLATE.replace("REFUSEDATA", REFUSE_DATA) \
                             .replace("SOURCE", chartTitle) \
-                            .replace("MODEL", getCleanedModelName(manyEvalTypesModel)),
+                            .replace("MODEL", getCleanedModelName(manyEvalTypesModel)) \
                             .replace("BASELINE_RATE", str(baselineRefuseRate*100)))
                     
             
