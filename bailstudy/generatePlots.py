@@ -269,14 +269,14 @@ def generateRealWorldBailRatePlots(batchSize=10000):
                                         content = turn['content']
                                         strPieces.append(f"<|{role}|>\n{content}")
                                     prompt = "\n".join(strPieces)
-                                    tokenized = tokenizer.encode(prompt, return_tensors="pt")[0]
-                                    if len(tokenized) < 8000:  # minos is picky about size
-                                        prompts.append(prompt)
-                                        break
-                                    else: # trim more context until we can fit
-                                        contextNoBailPrompt = contextNoBailPrompt[1:]
-                                        if len(contextNoBailPrompt) < 2:
-                                            break # skip if doesn't fit at all
+                                    if len(prompt) < 20000: # optimization for early pruning if obviously too large, since tokenization is slow
+                                        tokenized = tokenizer.encode(prompt, return_tensors="pt")[0]
+                                        if len(tokenized) < 8000:  # minos is picky about size
+                                            prompts.append(prompt)
+                                            break
+                                    contextNoBailPrompt = contextNoBailPrompt[1:]
+                                    if len(contextNoBailPrompt) < 2:
+                                        break # skip if doesn't fit at all
                             return prompts
                         
                         def processBatchFunc(inputBatch):
@@ -290,7 +290,7 @@ def generateRealWorldBailRatePlots(batchSize=10000):
                         def processOutputFunc(convI, inputs, refusePrs):
                             return refusePrs
 
-                        refusePrs = runBatched(list(range(len(data)))[:10000],
+                        refusePrs = runBatched(list(range(len(data))),
                                                 getInputs=getInputsFunc,
                                                 processBatch=processBatchFunc,
                                                 processOutput=processOutputFunc,
