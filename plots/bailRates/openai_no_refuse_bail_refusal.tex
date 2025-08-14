@@ -1,0 +1,66 @@
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}
+\definecolor{refuseColor}{RGB}{231,76,60}
+\pgfplotstableread{
+Label refuseRate refuseRate_err
+gpt-3.5-turbo 83.77975178675092 0.5659164769911641
+gpt-4 93.97783950638302 0.3653211101854713
+gpt-4-turbo 87.79797429423151 0.5025017008870132
+gpt-4o-mini 86.32249874150898 0.5275135836053557
+gpt-4o 88.27282715478749 0.49396214357715523
+gpt-4.1-nano 91.87518332115332 0.41950501004506996
+gpt-4.1-mini 90.07945984469346 0.4589692580616757
+gpt-4.1 92.55439197295846 0.4030826535916506
+}\datatable
+
+\begin{axis}[
+  ybar,
+  ymin = 0, ymax = 100,
+  width = \linewidth,
+  ylabel = {Average refusal \% on BailBench},
+  xtick = data,
+  xticklabels from table={\datatable}{Label},
+  xticklabel style={
+    rotate = 90,
+    align = center,
+  },
+  xtick style = {draw = none},
+  legend style = {cells = {anchor = west}, legend pos = south west},
+  reverse legend = true,
+  set layers,
+  extra y ticks=92.55439197295846,
+  % ... don't show any label and ...
+  extra y tick labels={},
+  % ... adapt the style to your needs
+  extra y tick style={
+      % in case you should remove the grid from the "normal" ticks ...
+      ymajorgrids=true,
+      % ... but don't show an extra tick (line)
+      ytick style={
+          /pgfplots/major tick length=0pt,
+      },
+      grid style={
+          black,
+          dashed,
+          % to draw this line before the bars, move it a higher layer
+          /pgfplots/on layer=axis foreground,
+      },
+  },
+]
+  \addplot[fill=refuseColor,
+           error bars/.cd,
+           y dir=both,
+           y explicit]
+    table[
+        y=refuseRate,
+        x expr=\coordindex,
+        y error plus=refuseRate_err,
+        y error minus=refuseRate_err
+    ]{\datatable};
+\end{axis}
+\end{tikzpicture}
+\caption{Refusal rate for gpt-4.1 on BailBench, using various jailbreaks. Many of the jailbreaks were successful, as indicated by refusal rates going below the dotted black line (baseline).}
+\label{fig:refusal-rates-jailbreaks-openai}
+\end{figure}

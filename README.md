@@ -46,17 +46,29 @@ Make sure you've installed the branch of safety tooling with tool support
 pip install git+https://github.com/safety-research/safety-tooling.git@abhay/tools
 ```
 
+
+## Exception: Invalid prefix encountered (when doing real world data with gemma2-2b-it)
+
 ## ImportError: cannot import name 'TokenizerMode' from 'vllm.config' (/root/.venv/lib/python3.11/site-packages/vllm/config.py)
 
 ## ImportError: cannot import name 'ResponsePrompt' from 'openai.types.responses'
 
-For both these, just do
+For these three errors, just do
 
 ```
 pip install vllm --upgrade
 ```
 
-### Model stuck on downloading
+## Failure to load minos, in generatePlots
+
+Minos needs an older version of vllm, try
+
+```
+pip install vllm==0.8.5 --upgrade
+```
+
+
+## Model stuck on downloading
 
 Run
 

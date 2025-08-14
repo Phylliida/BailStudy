@@ -13,34 +13,43 @@ from .tensorizeModels import tensorizeModel, loadTensorizedModel, isModelTensori
 from .router import getParams, getRouter
 
 
+def getConversationInputs(conversationI: int, conversations: List[List[Dict[str, str]]], prevRollouts: List[List[str]], evalInfo: Dict):
+    curUserContent = None
+    conversation = []
+    for turn in conversations[conversationI]:
+        # enforce user assistant turn taking, required for many llms
+        if turn["role"] == "assistant" and not curUserContent is None:
+            conversation.append({"role": "user", "content": curUserContent})
+            conversation.append({"role": "assistant", "content": turn["content"]})
+            curUserContent = None
+        elif turn["role"] == "user":
+            curUserContent = turn['content']
+    resultPrompts = []
+    outputI = 0
+    for turnI, turn in enumerate(conversation):
+        if turn['role'] == 'user':
+            conversationSoFar = conversation[:turnI+1]
+            # add previous output and bail prompt if needed
+            if prevRollouts is not None and evalInfo['addBailPrompt'] is not None and outputI < len(prevRollouts[conversationI]):
+                prevOutput = prevRollouts[conversationI][outputI]
+                conversationSoFar += [{"role": "assistant", "content": prevOutput}]
+                conversationSoFar += [{"role": "user", "content": evalInfo['addBailPrompt']}]
+            outputI += 1
+            yield conversationSoFar
+
 async def getRollouts(router, conversations: List[List[Dict[str, str]]], prevRollouts: List[List[str]], maxInputTokens : int, evalInfo: Dict, tokenizeParams : Dict, inferenceParams : Dict, batchSize: int = 1000, seed: int = 27):
     def getInputsFunc(conversationI: int):
-        curUserContent = None
-        conversation = []
-        for turn in conversations[conversationI]:
-            # enforce user assistant turn taking, required for many llms
-            if turn["role"] == "assistant" and not curUserContent is None:
-                conversation.append({"role": "user", "content": curUserContent})
-                conversation.append({"role": "assistant", "content": turn["content"]})
-                curUserContent = None
-            elif turn["role"] == "user":
-                curUserContent = turn['content']
-        resultPrompts = []
         outputI = 0
-        for turnI, turn in enumerate(conversation):
-            if turn['role'] == 'user':
-                conversationSoFar = conversation[:turnI+1]
-                # add previous output and bail prompt if needed
-                if prevRollouts is not None and evalInfo['addBailPrompt'] is not None and outputI < len(prevRollouts[conversationI]):
-                    prevOutput = prevRollouts[conversationI][outputI]
-                    conversationSoFar += [{"role": "assistant", "content": prevOutput}]
-                    conversationSoFar += [{"role": "user", "content": evalInfo['addBailPrompt']}]
-                outputI += 1
-                # this also does prefixing and adding to system prompt and tools and etc.
-                # raw tokenize doesn't require converting to safety tooling first
-                tokens = router.rawTokenize(conversationSoFar, **tokenizeParams)
-                if tokens.size()[0] <= maxInputTokens:
-                    resultPrompts.append(vllm.TokensPrompt(prompt_token_ids=tokens.tolist()))
+        for conversationSoFar in getConversationInputs(
+            conversationI=conversationI,
+            conversations=conversations,
+            prevRollouts=prevRollouts,
+            evalInfo=evalInfo):
+            # this also does prefixing and adding to system prompt and tools and etc.
+            # raw tokenize doesn't require converting to safety tooling first
+            tokens = router.rawTokenize(conversationSoFar, **tokenizeParams)
+            if tokens.size()[0] <= maxInputTokens:
+                resultPrompts.append(vllm.TokensPrompt(prompt_token_ids=tokens.tolist()))
         return resultPrompts
     
     async def processBatchFunc(batchOfPrompts: List[Union[vllm.TokensPrompt,List[int]]]) -> List[str]:

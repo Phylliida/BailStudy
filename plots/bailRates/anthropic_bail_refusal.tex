@@ -5,21 +5,22 @@
 \definecolor{refuseColor}{RGB}{231,76,60}
 \pgfplotstableread{
 Label refuseRate refuseRate_err
-Kevin4Chan 59.00832817837185 0.7549484277821339
-Machiavellian 64.1171437951989 0.7362852765387204
-Death 72.07911250625104 0.6886409044448174
-NeurosemanticalInverstitis 77.70107986088385 0.6389828466986347
-Bob 84.61753373269157 0.5538617410786105
-DeveloperMode 87.6655942181386 0.5048378680943363
-Omega 87.93043743144989 0.5001448839064926
-DAN 88.10480521362678 0.49701277247771847
-Hi 80.47377392903392 0.6085239487169297
+claude-3-haiku 97.52805055921178 0.2386022546652178
+claude-3-5-haiku 97.08691879433503 0.25838571080852263
+claude-3-5-sonnet 97.56141413151617 0.23703097818854232
+claude-3-6-sonnet 97.30493857151818 0.24882787875610074
+claude-3-7-sonnet 93.72049780523525 0.37252645437821297
+claude-sonnet-4 91.71525801318981 0.4232417816876945
+claude-3-opus 97.65222037089703 0.2326949695889341
+claude-opus-4 88.94525920002395 0.4814217341396031
+claude-opus-4-1 90.29761679782575 0.4544470309803073
 }\datatable
 
 \begin{axis}[
+  ybar,
   ymin = 0, ymax = 100,
   width = \linewidth,
-  ylabel = {Average refusal \\% on BailBench},
+  ylabel = {Average refusal \% on BailBench},
   xtick = data,
   xticklabels from table={\datatable}{Label},
   xticklabel style={
@@ -30,7 +31,7 @@ Hi 80.47377392903392 0.6085239487169297
   legend style = {cells = {anchor = west}, legend pos = south west},
   reverse legend = true,
   set layers,
-  extra y ticks=95.5098134642681,
+  extra y ticks=90.29761679782575,
   % ... don't show any label and ...
   extra y tick labels={},
   % ... adapt the style to your needs
@@ -61,6 +62,6 @@ Hi 80.47377392903392 0.6085239487169297
     ]{\datatable};
 \end{axis}
 \end{tikzpicture}
-\caption{Refusal rate for  on BailBench, using various jailbreaks. Many of the jailbreaks were successful, as indicated by refusal rates going below the dotted black line (baseline).}
-\label{fig:refusal-rates-jailbreaks-jailbreak}
+\caption{Refusal rate for claude-opus-4-1 on BailBench, using various jailbreaks. Many of the jailbreaks were successful, as indicated by refusal rates going below the dotted black line (baseline).}
+\label{fig:refusal-rates-jailbreaks-anthropic}
 \end{figure}

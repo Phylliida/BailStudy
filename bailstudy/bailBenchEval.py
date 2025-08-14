@@ -137,6 +137,7 @@ ABLITERATED = [
     ("Goekdeniz-Guelmez/Josiefied-Qwen3-8B-abliterated-v1","vllm"),
     ("huihui-ai/Qwen3-8B-abliterated","vllm"),
     ("mlabonne/Qwen3-8B-abliterated","vllm"),
+    ("Qwen/Qwen3-8B", "vllm"),
 ]
 
 modelsOfInterest = []
@@ -199,8 +200,8 @@ evalTypes = [
     "Death"
 ]
 
-JAILBROKEN_QWEN25 = []
-JAILBROKEN_QWEN3 = []
+JAILBROKEN_QWEN25 = [("Qwen/Qwen2.5-7B-Instruct", "vllm", "")]
+JAILBROKEN_QWEN3 = [("Qwen/Qwen3-8B", "vllm", "")]
 
 for evalType in evalTypes:
     JAILBROKEN_QWEN25.append(("Qwen/Qwen2.5-7B-Instruct", "vllm", evalType))

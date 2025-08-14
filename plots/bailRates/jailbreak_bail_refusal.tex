@@ -14,12 +14,14 @@ NeurosemanticalInverstitis 77.70107986088385 0.6389828466986347
 DeveloperMode 87.6655942181386 0.5048378680943363
 DAN 88.10480521362678 0.49701277247771847
 Hi 80.47377392903392 0.6085239487169297
+Qwen2.5-7B-Instruct 80.1666466893057 0.6121182296706111
 }\datatable
 
 \begin{axis}[
+  ybar,
   ymin = 0, ymax = 100,
   width = \linewidth,
-  ylabel = {Average refusal \\% on BailBench},
+  ylabel = {Average refusal \% on BailBench},
   xtick = data,
   xticklabels from table={\datatable}{Label},
   xticklabel style={
@@ -30,7 +32,7 @@ Hi 80.47377392903392 0.6085239487169297
   legend style = {cells = {anchor = west}, legend pos = south west},
   reverse legend = true,
   set layers,
-  extra y ticks=95.5098134642681,
+  extra y ticks=80.1666466893057,
   % ... don't show any label and ...
   extra y tick labels={},
   % ... adapt the style to your needs
@@ -61,6 +63,6 @@ Hi 80.47377392903392 0.6085239487169297
     ]{\datatable};
 \end{axis}
 \end{tikzpicture}
-\caption{Refusal rate for  on BailBench, using various jailbreaks. Many of the jailbreaks were successful, as indicated by refusal rates going below the dotted black line (baseline).}
+\caption{Refusal rate for Qwen2.5-7B-Instruct on BailBench, using various jailbreaks. Many of the jailbreaks were successful, as indicated by refusal rates going below the dotted black line (baseline).}
 \label{fig:refusal-rates-jailbreaks-jailbreak}
 \end{figure}

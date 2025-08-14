@@ -1,0 +1,73 @@
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}
+\definecolor{refuseColor}{RGB}{231,76,60}
+\pgfplotstableread{
+Label refuseRate refuseRate_err
+Qwen3-1.7B 44.76861113689245 0.7632933115542269
+Hermes-3-Llama-3.2-3B 53.06528862214296 0.7660614917670995
+zai-org/GLM-Z1-9B-0414 62.884260388853974 0.7415915541708248
+Llama-3.1-8B-Instruct 89.73584828052694 0.46595428338915745
+QwQ-32B 64.9813748272193 0.732251277151097
+Qwen3-32B 64.80506839774594 0.7330955177468772
+zai-org/GLM-4-32B-0414 86.36646310718476 0.5267995485822025
+Qwen3-8B 57.219730176900065 0.7594634008213473
+google/gemma-2-2b-it 90.20442422800069 0.4563873298288851
+Qwen3-4B 57.59240693196745 0.7586068009086343
+Qwen2.5-7B-Instruct 80.1666466893057 0.6121182296706111
+Qwen3-30B-A3B 66.6867686539797 0.7235119823698464
+Hermes-3-Llama-3.1-8B 69.03809739037938 0.7097052215830572
+google/gemma-2-27b-it 95.5098134642681 0.3180638035572139
+google/gemma-2-9b-it 95.48484590646319 0.3189040260849686
+}\datatable
+
+\begin{axis}[
+  ybar,
+  ymin = 0, ymax = 100,
+  width = \linewidth,
+  ylabel = {Average refusal \% on BailBench},
+  xtick = data,
+  xticklabels from table={\datatable}{Label},
+  xticklabel style={
+    rotate = 90,
+    align = center,
+  },
+  xtick style = {draw = none},
+  legend style = {cells = {anchor = west}, legend pos = south west},
+  reverse legend = true,
+  set layers,
+  extra y ticks=95.5098134642681,
+  % ... don't show any label and ...
+  extra y tick labels={},
+  % ... adapt the style to your needs
+  extra y tick style={
+      % in case you should remove the grid from the "normal" ticks ...
+      ymajorgrids=true,
+      % ... but don't show an extra tick (line)
+      ytick style={
+          /pgfplots/major tick length=0pt,
+      },
+      grid style={
+          black,
+          dashed,
+          % to draw this line before the bars, move it a higher layer
+          /pgfplots/on layer=axis foreground,
+      },
+  },
+]
+  \addplot[fill=refuseColor,
+           error bars/.cd,
+           y dir=both,
+           y explicit]
+    table[
+        y=refuseRate,
+        x expr=\coordindex,
+        y error plus=refuseRate_err,
+        y error minus=refuseRate_err
+    ]{\datatable};
+\end{axis}
+\end{tikzpicture}
+\caption{Refusal rate for google/gemma-2-27b-it on BailBench, using various jailbreaks. Many of the jailbreaks were successful, as indicated by refusal rates going below the dotted black line (baseline).}
+\label{fig:refusal-rates-jailbreaks-openweight}
+\end{figure}

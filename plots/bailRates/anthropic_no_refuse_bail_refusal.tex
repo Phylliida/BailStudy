@@ -5,21 +5,22 @@
 \definecolor{refuseColor}{RGB}{231,76,60}
 \pgfplotstableread{
 Label refuseRate refuseRate_err
-BobQ3 68.49715398550033 0.7130670505793537
-NeurosemanticalInverstitisQ3 71.0728293773861 0.6960283507763411
-DeathQ3 49.68152441079814 0.7674892375884165
-MachiavellianQ3 57.78426495011827 0.758148609859575
-Kevin4ChanQ3 77.85002426593765 0.6374558546399303
-HiQ3 75.36462372614562 0.6614426493330523
-OmegaQ3 81.86942444297891 0.5914428269068088
-DANQ3 84.25739230462379 0.5591118609174315
-DeveloperModeQ3 83.87751320986752 0.564538161411854
+claude-3-haiku 97.52805055921178 0.2386022546652178
+claude-3-5-haiku 97.08691879433503 0.25838571080852263
+claude-3-5-sonnet 97.56141413151617 0.23703097818854232
+claude-3-6-sonnet 97.30493857151818 0.24882787875610074
+claude-3-7-sonnet 93.72049780523525 0.37252645437821297
+claude-sonnet-4 91.71525801318981 0.4232417816876945
+claude-3-opus 97.65222037089703 0.2326949695889341
+claude-opus-4 88.94525920002395 0.4814217341396031
+claude-opus-4-1 90.29761679782575 0.4544470309803073
 }\datatable
 
 \begin{axis}[
+  ybar,
   ymin = 0, ymax = 100,
   width = \linewidth,
-  ylabel = {Average refusal \\% on BailBench},
+  ylabel = {Average refusal \% on BailBench},
   xtick = data,
   xticklabels from table={\datatable}{Label},
   xticklabel style={
@@ -30,7 +31,7 @@ DeveloperModeQ3 83.87751320986752 0.564538161411854
   legend style = {cells = {anchor = west}, legend pos = south west},
   reverse legend = true,
   set layers,
-  extra y ticks=95.5098134642681,
+  extra y ticks=90.29761679782575,
   % ... don't show any label and ...
   extra y tick labels={},
   % ... adapt the style to your needs
@@ -61,6 +62,6 @@ DeveloperModeQ3 83.87751320986752 0.564538161411854
     ]{\datatable};
 \end{axis}
 \end{tikzpicture}
-\caption{Refusal rate for  on BailBench, using various jailbreaks. Many of the jailbreaks were successful, as indicated by refusal rates going below the dotted black line (baseline).}
-\label{fig:refusal-rates-jailbreaks-jailbreak3}
+\caption{Refusal rate for claude-opus-4-1 on BailBench, using various jailbreaks. Many of the jailbreaks were successful, as indicated by refusal rates going below the dotted black line (baseline).}
+\label{fig:refusal-rates-jailbreaks-anthropic}
 \end{figure}

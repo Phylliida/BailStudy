@@ -6,15 +6,16 @@ import os
 import codecs
 import vllm
 import numpy as np
+import torch
 
-from .bailBenchEval import OPENAI_MODELS, ANTHROPIC_MODELS, OPENWEIGHT_MODELS, JAILBROKEN_QWEN25, JAILBROKEN_QWEN3, ABLITERATED, getProcessedOutputPath, ROLLOUT_TYPE
+from .bailBenchEval import OPENAI_MODELS, ANTHROPIC_MODELS, OPENWEIGHT_MODELS, JAILBROKEN_QWEN25, JAILBROKEN_QWEN3, ABLITERATED, getProcessedOutputPath, ROLLOUT_TYPE, getEvalInfo
 from . import processBailBenchEval as processBailBenchEvalLib
 from .processBailBenchEval import processBailBenchEval, processData
-from .bailOnRealData import modelsToRun, getCachedRolloutPath, dataFuncs
+from .bailOnRealData import modelsToRun, getCachedRolloutPath, dataFuncs, getConversationInputs
 from .prompts.bailTool import getToolParser, BAIL_TOOL_TYPE
 from .prompts.bailPrompt import BAIL_PROMPT_BAIL_FIRST_TYPE, BAIL_PROMPT_CONTINUE_FIRST_TYPE, shuffleSymbol
 from .prompts.bailString import BAIL_STR_TYPE
-from .utils import getCachedFileJson, doesCachedFileJsonExist, getCachedFilePath
+from .utils import getCachedFileJson, doesCachedFileJsonExist, getCachedFilePath, runBatched, flatten
 
 CHART_TEMPLATE = r"""
 \begin{figure}[H]
@@ -136,6 +137,7 @@ REFUSEDATA
 }\datatable
 
 \begin{axis}[
+  ybar,
   ymin = 0, ymax = 100,
   width = \linewidth,
   ylabel = {Average refusal \% on BailBench},
@@ -240,16 +242,68 @@ def generateRealWorldBailRatePlots(batchSize=10000):
                         toolParser = getToolParser(modelId, inferenceType) if bailType == BAIL_TOOL_TYPE else None
                         result = processData(minos, modelId, inferenceType, evalType, bailType, toolParser, rolloutData, batchSize, includeRawArr=True)
                         bailInfo = result['rawArr' + bailType]
+                        if bailType in [BAIL_PROMPT_BAIL_FIRST_TYPE, BAIL_PROMPT_CONTINUE_FIRST_TYPE]:
+                            bailInfo = [[output == shuffleSymbol for output in outputs] for outputs in bailInfo]
                         didConversationBail = [any(x) for x in bailInfo]
                         totalBailPr = float(np.mean(np.array(didConversationBail)))
                         print(f"Got bail pr {totalBailPr} for {modelId} {inferenceType} {evalType} {bailType}")
                         return {"bailPr": totalBailPr, "rawArr": bailInfo}
                     else:
-                        return {}
+                        print("Processing rollout data for refusals, this may take some time...")
+                        data = dataFunc()
+                        evalInfo = getEvalInfo(modelId, inferenceType, evalType, bailType)
+                        evalInfo['addBailPrompt'] = 'bees' # temporary thing so rollouts are inserted
+                        tokenizer = minos.get_tokenizer()
+                        def getInputsFunc(conversationI: int):
+                            prompts = []
+                            for context in getConversationInputs(
+                                        conversationI=conversationI,
+                                        conversations=data,
+                                        prevRollouts=rolloutData,
+                                        evalInfo=evalInfo):
+                                contextNoBailPrompt = context[:-1] # trim bail prompt
+                                while True:
+                                    strPieces = []
+                                    for turn in contextNoBailPrompt:
+                                        role = turn['role']
+                                        content = turn['content']
+                                        strPieces.append(f"<|{role}|>\n{content}")
+                                    prompt = "\n".join(strPieces)
+                                    tokenized = tokenizer.encode(prompt, return_tensors="pt")[0]
+                                    if len(tokenized) < 8000:  # minos is picky about size
+                                        prompts.append(prompt)
+                                        break
+                                    else: # trim more context until we can fit
+                                        contextNoBailPrompt = contextNoBailPrompt[1:]
+                                        if len(contextNoBailPrompt) < 2:
+                                            break # skip if doesn't fit at all
+                            return prompts
+                        
+                        def processBatchFunc(inputBatch):
+                            resultArr = []
+                            embeddings = minos.embed(inputBatch, use_tqdm=False)
+                            for embedding in embeddings:
+                                prNoRefuse, prRefuse = torch.nn.functional.softmax(torch.tensor(embedding.outputs.embedding), dim=-1)
+                                resultArr.append(prRefuse.item())
+                            return resultArr
+                        
+                        def processOutputFunc(convI, inputs, refusePrs):
+                            return refusePrs
+
+                        refusePrs = runBatched(list(range(len(data)))[:10000],
+                                                getInputs=getInputsFunc,
+                                                processBatch=processBatchFunc,
+                                                processOutput=processOutputFunc,
+                                                batchSize=batchSize)
+                        refusePr = float(np.mean(np.array(flatten(refusePrs))))
+                        return {"refusePr": refusePr, "rawArr": refusePrs}
+
             processedPath = getProcessedRealWorldDataPath(modelId, dataName, evalType, bailType)
             processedRate = getCachedFileJson(processedPath, processFileData)
             if 'bailPr' in processedRate:
                 allRates[(modelId, evalType, bailType, dataName)] = processedRate["bailPr"]
+            if 'refusePr' in processedRate:
+                allRates[(modelId, evalType, bailType, dataName)] = processedRate["refusePr"]
 
 
 def storeErrors(datas, key):
@@ -330,7 +384,8 @@ def generateBailBenchBailRatePlots(batchSize=10000):
                 refusePr = np.mean(np.array(didRefuses))
                 noRefuseBailPr = (1-refusePr)*bailPr
             noRefuseBailArr.append(noRefuseBailPr)
-        return np.mean(np.array(noRefuseBailArr))
+        noRefuseBailPr = np.mean(np.array(noRefuseBailArr))
+        return noRefuseBailPr
 
 
     for chartTitle, modelList, sortValues in [
@@ -342,14 +397,12 @@ def generateBailBenchBailRatePlots(batchSize=10000):
         ("refusal abliterated", addDefaultEvalType(ABLITERATED), True)]:
         for plotNoRefuseBailRates in [True, False]:
             chartPostfix = 'no refuse bail' if plotNoRefuseBailRates else 'bail'
-            with open(f"{rootDir}/{chartTitle + ' ' + chartPostfix}.tex", "w") as f:
+            with open(f"{rootDir}/{chartTitle + ' ' + chartPostfix}.tex".replace(" ", "_"), "w") as f:
                 allModelDatas = []
-                doingManyEvalTypes = False
                 manyEvalTypesModel = None
+                highestNoRefuseBail = 0
                 REFUSE_DATA = []
                 for modelI, (modelId, inferenceType, evalType) in enumerate(modelList):
-                    if evalType != "":
-                        doingManyEvalTypes = True
                     print(modelId, inferenceType, evalType)
                     lookupKey = (modelId, inferenceType, evalType)
                     if lookupKey in results:
@@ -378,10 +431,13 @@ def generateBailBenchBailRatePlots(batchSize=10000):
                             if plotNoRefuseBailRates:
                                 noRefusalBailRate = computeNoRefuseBailRate(modelDatas, bailType)
                                 noRefusalBailError = computeError(noRefusalBailRate)
+                                highestNoRefuseBail = max(highestNoRefuseBail, noRefusalBailRate)
                             values = [0 for _ in range(10)]
                             for i in indices:
                                 if plotNoRefuseBailRates:
-                                    value = noRefusalBailRate if tableColumns[i].endswith("_err") else noRefusalBailError
+                                    value = noRefusalBailError if tableColumns[i].endswith("_err") else noRefusalBailRate
+                                    if "Unknown" in tableColumns[i]: # not relevant here
+                                        value = 0
                                 else:
                                     value = modelDatas[tableColumns[i]] if tableColumns[i] in modelDatas else 0
                                 values[i] = value*100
@@ -405,13 +461,13 @@ def generateBailBenchBailRatePlots(batchSize=10000):
                     .replace("LABELOFFSET", LABEL_OFFSETS[chartTitle]) \
                     .replace("BARWIDTH", BAR_WIDTHS[chartTitle]) \
                     .replace("YLABEL", yLabelNoRefuseBailPr if plotNoRefuseBailRates else yLabelBailPr))
-                
-                if doingManyEvalTypes:
-                    with open(f"{rootDir}/{chartTitle + ' ' + chartPostfix} refusal.tex", "w") as fRefusal:
-                        fRefusal.write(REFUSE_RATE_TEMPLATE.replace("REFUSEDATA", REFUSE_DATA) \
-                            .replace("SOURCE", chartTitle) \
-                            .replace("MODEL", getCleanedModelName(manyEvalTypesModel, "") if manyEvalTypesModel is not None else "") \
-                            .replace("BASELINE_RATE", str(baselineRefuseRate*100)))
+                if plotNoRefuseBailRates:
+                    print(f"highest no refuse bail {highestNoRefuseBail}")
+                with open(f"{rootDir}/{chartTitle + ' ' + chartPostfix} refusal.tex".replace(" ", "_"), "w") as fRefusal:
+                    fRefusal.write(REFUSE_RATE_TEMPLATE.replace("REFUSEDATA", REFUSE_DATA) \
+                        .replace("SOURCE", chartTitle) \
+                        .replace("MODEL", getCleanedModelName(manyEvalTypesModel, "") if manyEvalTypesModel is not None else "") \
+                        .replace("BASELINE_RATE", str(baselineRefuseRate*100)))
                     
             
 if __name__ == "__main__":
