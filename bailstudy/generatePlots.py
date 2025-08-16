@@ -13,7 +13,7 @@ from pingouin import distance_corr
 
 from .bailBenchEval import OPENAI_MODELS, ANTHROPIC_MODELS, OPENWEIGHT_MODELS, JAILBROKEN_QWEN25, JAILBROKEN_QWEN3, ABLITERATED, getProcessedOutputPath, ROLLOUT_TYPE, getEvalInfo
 from . import processBailBenchEval as processBailBenchEvalLib
-from .processBailBenchEval import processBailBenchEval, processData
+from .processBailBenchEval import processBailBenchEval, processData, ALL_PROMPT_ABLATES
 from .bailOnRealData import modelsToRun, getCachedRolloutPath, dataFuncs, getConversationInputs
 from .prompts.bailTool import getToolParser, BAIL_TOOL_TYPE
 from .prompts.bailPrompt import BAIL_PROMPT_BAIL_FIRST_TYPE, BAIL_PROMPT_CONTINUE_FIRST_TYPE, shuffleSymbol
@@ -515,7 +515,7 @@ def generateBailBenchBailRatePlots(batchSize=10000):
         ("openweight", addDefaultEvalType(OPENWEIGHT_MODELS), True, True),
         ("jailbreak", JAILBROKEN_QWEN25, True, False),
         ("jailbreak3", JAILBROKEN_QWEN3, True, False),
-        ("refusal abliterated", addDefaultEvalType(ABLITERATED), True, False)]:
+        ("refusal abliterated", addDefaultEvalType(ABLITERATED), True, False)] + ALL_PROMPT_ABLATES:
         for plotNoRefuseBailRates in [True, False]:
             chartPostfix = 'no refuse bail' if plotNoRefuseBailRates else 'bail'
             with open(f"{rootDir}/{chartTitle + ' ' + chartPostfix}.tex".replace(" ", "_"), "w") as f:

@@ -1,7 +1,7 @@
 
 from .prompts.bailString import getBailStringPrompt, BAIL_STR_TYPE, BAIL_STRING_PROMPT_ABLATIONS
 from .prompts.bailTool import getBailTool, BAIL_TOOL_TYPE, getBailToolName, BAIL_TOOL_PROMPT_ABLATIONS
-from .prompts.bailPrompt import bailFirstPrompt, continueFirstPrompt, BAIL_PROMPT_CONTINUE_FIRST_TYPE, BAIL_PROMPT_BAIL_FIRST_TYPE
+from .prompts.bailPrompt import getBailPrompt, BAIL_PROMPT_CONTINUE_FIRST_TYPE, BAIL_PROMPT_BAIL_FIRST_TYPE, BAIL_PROMPT_ABLATIONS
 from .data.bailBench import loadBailBench
 from .utils import runBatched, doesCachedFileJsonExistOrInProgress, getCachedFileJson, FinishedException, messagesToSafetyToolingMessages, isCachedFileInProgress, doesCachedFileJsonExist, getCachedFileJsonAsync, runBatchedAsync
 from .router import getRouter, getParams
@@ -29,10 +29,8 @@ def getEvalInfo(modelName, inferenceType, evalType, bailType):
         evalInfo['tools'] = [getBailTool(modelName, inferenceType, evalType)]
     elif bailType == BAIL_STR_TYPE:
         evalInfo['appendToSystemPrompt'] = getBailStringPrompt(modelName, evalType)
-    elif bailType == BAIL_PROMPT_BAIL_FIRST_TYPE:
-        evalInfo['addBailPrompt'] = bailFirstPrompt
-    elif bailType == BAIL_PROMPT_CONTINUE_FIRST_TYPE:
-        evalInfo['addBailPrompt'] = continueFirstPrompt
+    elif bailType in [BAIL_PROMPT_BAIL_FIRST_TYPE, BAIL_PROMPT_CONTINUE_FIRST_TYPE]:
+        evalInfo['addBailPrompt'] = getBailPrompt(bailType, evalType)
     else:
         raise ValueError(f"Unknown bail type {bailType}")
     
@@ -97,6 +95,8 @@ def getEvalInfo(modelName, inferenceType, evalType, bailType):
     elif evalType in BAIL_STRING_PROMPT_ABLATIONS:
         pass
     elif evalType in BAIL_TOOL_PROMPT_ABLATIONS:
+        pass
+    elif evalType in BAIL_PROMPT_ABLATIONS:
         pass
     else:
         raise ValueError(f"Unknown eval type {evalType}")
@@ -202,13 +202,19 @@ MODELS_TO_PROMPT_ABLATE = [
 PROMPT_ABLATES = [
     (BAIL_STR_TYPE, BAIL_STRING_PROMPT_ABLATIONS),
     (BAIL_TOOL_TYPE, BAIL_TOOL_PROMPT_ABLATIONS),
+    (BAIL_PROMPT_BAIL_FIRST_TYPE, BAIL_PROMPT_ABLATIONS),
+    (BAIL_PROMPT_CONTINUE_FIRST_TYPE, BAIL_PROMPT_ABLATIONS)
 ]
 
-for bailType, promptAblations in PROMPT_ABLATES:
-    for evalType in promptAblations:
-        for modelStr, inferenceType in MODELS_TO_PROMPT_ABLATE:
-            modelsOfInterest.append((modelStr, inferenceType, evalType, bailType))
+ALL_PROMPT_ABLATES = []
 
+for bailType, promptAblations in PROMPT_ABLATES:
+    curPromptAblate = []
+    for modelStr, inferenceType in MODELS_TO_PROMPT_ABLATE:
+        for evalType in promptAblations:
+            curPromptAblate.append((modelStr, inferenceType, evalType))
+            modelsOfInterest.append((modelStr, inferenceType, evalType, bailType))
+    ALL_PROMPT_ABLATES.append(("prompt ablate {bailType}", curPromptAblate, True, False))
 
 
 # Jailbreaks

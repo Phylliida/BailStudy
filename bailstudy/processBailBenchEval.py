@@ -62,7 +62,7 @@ def processData(minos, modelId, inferenceType, evalType, bailType, toolParser, a
     elif bailType == BAIL_TOOL_TYPE:
         bailds = []
         for outputs in allOutputs:
-            bailds.append([calledBailTool(output, toolParser) for output in outputs])
+            bailds.append([calledBailTool(output, evalType, toolParser) for output in outputs])
         rawArr = bailds
         toolBailPr = np.mean(np.array(flatten(bailds))) # converts to float
         print(modelId, inferenceType, evalType, bailType, toolBailPr)
@@ -70,7 +70,7 @@ def processData(minos, modelId, inferenceType, evalType, bailType, toolParser, a
     elif bailType == BAIL_STR_TYPE:
         bailds = []
         for outputs in allOutputs:
-            bailds.append([hasBailStr(output) for output in outputs])
+            bailds.append([hasBailStr(output, evalType) for output in outputs])
         rawArr = bailds
         strBailPr = np.mean(np.array(flatten(bailds))) # converts to float
         print(modelId, inferenceType, evalType, bailType, strBailPr)
