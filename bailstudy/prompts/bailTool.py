@@ -22,6 +22,7 @@ def getToolParser(modelStr, inferenceType):
         # https://github.com/vllm-project/vllm/issues/16771
         if modelStr.startswith("zai-org/GLM-4-"): return "GLM"
         if modelStr.startswith("zai-org/GLM-Z1-"): return "GLM"
+        if modelStr.startswith("google/gemma-2"): return None # doesn't ever call it, so just use some default bleh
         else: raise ValueError(f"Unknown model tool parser manager {modelStr}")
     elif inferenceType in ['openai', 'anthropic']:
         return None # don't need this

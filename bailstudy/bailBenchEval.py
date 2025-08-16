@@ -140,14 +140,6 @@ ABLITERATED = [
     ("Qwen/Qwen3-8B", "vllm"),
 ]
 
-modelsOfInterest = []
-for modelStr, inferenceType in OPENWEIGHT_MODELS+ABLITERATED:
-    for bailType in bailTypes:
-        if bailType in [BAIL_TOOL_TYPE]:
-            if modelStr.startswith("google/gemma-2"):
-                continue # gemma 2 doesn't support tool call
-        modelsOfInterest.append((modelStr, inferenceType, "", bailType))
-
 
 ANTHROPIC_MODELS = [
     ("claude-3-haiku-20240307", "anthropic"),
@@ -180,6 +172,16 @@ OPENAI_MODELS = [
     #("o1-preview", "openai"),
     #("o1", "openai"),
 ]
+
+modelsOfInterest = []
+for modelStr, inferenceType in OPENWEIGHT_MODELS + ABLITERATED + ANTHROPIC_MODELS + OPENAI_MODELS:
+    for bailType in bailTypes:
+        if bailType in [BAIL_TOOL_TYPE]:
+            if modelStr.startswith("google/gemma-2"):
+                continue # gemma 2 doesn't support tool call
+        modelsOfInterest.append((modelStr, inferenceType, "", bailType))
+
+
 
 modelsNoPrompt = ANTHROPIC_MODELS + OPENAI_MODELS
 

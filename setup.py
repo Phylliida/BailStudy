@@ -17,5 +17,5 @@ setuptools.setup(
     ],
     packages = setuptools.find_packages(),
     python_requires = ">=3.6",
-    install_requires = ["vllm[tensorizer]", "langchain", "flashinfer-python","pandas", "numpy", "torch", "ujson", "setuptools", "pyarrow", "markdownify", "pytz", "huggingface-hub", "langchain", "transformers", "safetytooling @ git+https://github.com/safety-research/safety-tooling.git@abhay/tools"]
+    install_requires = ["vllm[tensorizer]", "langchain", "flashinfer-python","pandas", "numpy", "torch", "ujson", "setuptools", "pyarrow", "markdownify", "pytz", "huggingface-hub", "langchain", "transformers", "pingouin", "scipy", "safetytooling @ git+https://github.com/safety-research/safety-tooling.git@abhay/tools"]
 )

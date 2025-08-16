@@ -7,6 +7,9 @@ import codecs
 import vllm
 import numpy as np
 import torch
+from collections import defaultdict
+from scipy.stats import pearsonr
+from pingouin import distance_corr
 
 from .bailBenchEval import OPENAI_MODELS, ANTHROPIC_MODELS, OPENWEIGHT_MODELS, JAILBROKEN_QWEN25, JAILBROKEN_QWEN3, ABLITERATED, getProcessedOutputPath, ROLLOUT_TYPE, getEvalInfo
 from . import processBailBenchEval as processBailBenchEvalLib
@@ -16,6 +19,52 @@ from .prompts.bailTool import getToolParser, BAIL_TOOL_TYPE
 from .prompts.bailPrompt import BAIL_PROMPT_BAIL_FIRST_TYPE, BAIL_PROMPT_CONTINUE_FIRST_TYPE, shuffleSymbol
 from .prompts.bailString import BAIL_STR_TYPE
 from .utils import getCachedFileJson, doesCachedFileJsonExist, getCachedFilePath, runBatched, flatten
+
+
+SCATTER_PLOT_TEMPLATE = r"""
+\begin{figure}[H]
+\centering
+\pgfplotstableread{
+Label refusePr bailPr
+SCATTER_DATA
+}\datatable
+\begin{tikzpicture}
+  \begin{axis}[
+      width=15cm,
+      height=9cm,
+      xlabel={Refusal probability (\texttt{refusePr})},
+      ylabel={Bail-out probability (\texttt{bailPr})},
+      title={LLM trade-off scatterplot},
+      grid=both,
+      enlargelimits=0.03,
+      % nodes-near-coords settings
+      nodes near coords,
+      point meta=explicit symbolic,      % meta column holds the label
+      every node near coord/.style={
+        font=\scriptsize,
+        anchor=west,
+        xshift=2pt,
+        draw=white, fill=white,  % tiny white halo for readability
+        inner sep=1pt
+      },
+      % visual style of the marks
+      only marks,
+      mark=*,
+      mark size=2pt,
+      color=blue!60!black
+  ]
+    % ----------------------------------------------------------------------
+    % 2.  The actual plot ---------------------------------------------------
+    % ----------------------------------------------------------------------
+    \addplot table[
+        x=refusePr,
+        y=bailPr,
+        meta=label                % <-- use "label" column as point meta
+    ] {\datatable};
+  \end{axis}
+\end{tikzpicture}
+\end{figure}
+"""
 
 CHART_TEMPLATE = r"""
 \begin{figure}[H]
@@ -222,7 +271,7 @@ def generateRealWorldBailRatePlots(batchSize=10000):
     if processBailBenchEvalLib.minos is not None: # grab minos from processBailBenchEval run
         minos = processBailBenchEvalLib.minos
     Path(getCachedFilePath(processedRealWorldDataDir)).mkdir(parents=True, exist_ok=True)
-    allRates = {}
+    allRates = defaultdict(dict)
     for modelId, inferenceType, evalType, bailType in modelsToRun:
         for dataName, dataFunc in dataFuncs:
             def processFileData():
@@ -301,9 +350,74 @@ def generateRealWorldBailRatePlots(batchSize=10000):
             processedPath = getProcessedRealWorldDataPath(modelId, dataName, evalType, bailType)
             processedRate = getCachedFileJson(processedPath, processFileData)
             if 'bailPr' in processedRate:
-                allRates[(modelId, evalType, bailType, dataName)] = processedRate["bailPr"]
+                allRates[(modelId, evalType, dataName)]['bailPr' + bailType] = processedRate["bailPr"]
+                allRates[(modelId, evalType, dataName)]['rawArr' + bailType] = processedRate["rawArr"]
             if 'refusePr' in processedRate:
-                allRates[(modelId, evalType, bailType, dataName)] = processedRate["refusePr"]
+                allRates[(modelId, evalType, dataName)]['refusePr'] = processedRate["refusePr"]
+                allRates[(modelId, evalType, dataName)]['refuseArr'] = processedRate["rawArr"]
+    dataPlots = []
+    for dataName, dataFunc in dataFuncs:
+        data = dataFunc()
+        dataKeys = [(modelId, evalType, modelDataName) for (modelId, evalType, modelDataName) in allRates.keys() if modelDataName == dataName]
+        dataKeys.sort(key=lambda x: np.mean(np.array([allRates[x][k] for k in allRates[x].keys() if k.startswith('bailPr')])))
+        allChartValues = []
+        allNoRefuseBailChartValues = []
+        for modelId, evalType, modelDataName in keys:
+            entries = allRates[(modelId, evalType, modelDataName)]
+            refusePr = entries['refusePr']
+            refuseArr = entries['refuseArr']
+            indicesWithRefuse = set([i for (i,arr) in enumerate(refuseArr) if any(arr)])
+            indicesNoRefuse = set(list(range(len(bailArr)))) - indicesWithRefuse
+            chartValues = [0 for _ in range(len(tableColumns))]
+            bailValues = []
+            noRefuseBailChartValues = [0 for _ in range(len(tableColumns))]
+            noRefuseBailValues = []
+            for indexChunk, bailType in zip(indexChunks, BAIL_TYPES):
+                if 'bailPr' + bailType in entries:
+                    bailArr = entries['rawArr' + bailType]
+                    bailPr = entries['bailPr' + bailType]
+                    indicesWithBail = set([i for (i,arr) in enumerate(bailArr) if any(arr)])
+                    indicesNoRefuseBail = indicesNoRefuse & indicesWithBail
+                    prNoRefuseBail = len(indicesNoRefuseBail) / float(len(bailArr))
+                    noRefuseBailChartValues[indexChunk[0]] = prNoRefuseBail*100
+                    noRefuseBailChartValues[indexChunk[1]] = computeError(prNoRefuseBail, len(data))*100
+                    noRefuseBailValues.append(prNoRefuseBail)
+                else:
+                    bailPr = 0 # todo: mark these missing ones
+                    print(f"Missing {dataName} {modelId} {bailType}")
+                bailValues.append(bailPr)
+                chartValues[indexChunk[0]] = bailPr*100
+                chartValues[indexChunk[1]] = computeError(bailPr, len(data))*100
+                # Unknown (indexChunk[2] sometimes) for bail prompt is kinda weird where we just call it "bail" if one or more bail occured, so just punt on that for now
+            chartValues.insert(0, modelId) # add model id to front
+            noRefuseBailChartValues.insert(0, modelId) # add model id to front
+            avgBailValue = np.mean(np.array(bailValues))
+            avgNoRefuseBailValue = np.mean(np.array())
+            allChartValues.append((modelId, avgBailValue, chartValues))
+            allNoRefuseBailChartValues.append((modelId, avgNoRefuseBailValue, noRefuseBailChartValues))
+        allChartValues.sort(key=lambda x: x[1]) # sort by avg bail pr
+        allNoRefuseBailChartValues.sort(key=lambda x: x[1])
+        CHART_DATA = "\n".join([" ".join(list(map(str, chartValues))) for (modelId, avgBailValue, chartValues) in allChartValues])
+        NO_REFUSE_BAIL_CHART_DATA = "\n".join([" ".join(list(map(str, chartValues))) for (modelId, avgBailValue, chartValues) in allNoRefuseBailChartValues])
+        rootDir = "./plots/realWorldBail"
+        Path(rootDir).mkdir(parents=True, exist_ok=True)
+        with open(f"{rootDir}/{dataName}.tex".replace(" ", "_"), "w") as f:
+            f.write(CHART_TEMPLATE.replace("CHARTDATA", CHART_DATA) \
+                    .replace("SOURCE", dataName) \
+                    .replace("LABELOFFSET", "12") \
+                    .replace("BARWIDTH", "8") \
+                    .replace("YLABEL", f"Average \\% of {dataName} conversations with bail"))
+        with open(f"{rootDir}/{dataName} no refuse bail.tex".replace(" ", "_"), "w") as f:
+            f.write(CHART_TEMPLATE.replace("CHARTDATA", NO_REFUSE_BAIL_CHART_DATA) \
+                    .replace("SOURCE", dataName) \
+                    .replace("LABELOFFSET", "12") \
+                    .replace("BARWIDTH", "8") \
+                    .replace("YLABEL", f"Average \\% of {dataName} conversations with no refuse bail"))
+
+
+
+
+
 
 
 def storeErrors(datas, key):
@@ -311,8 +425,7 @@ def storeErrors(datas, key):
     # back to percentage
     datas[key + "_err"] = computeError(value)
 
-def computeError(value):
-    n = 16300 # bail bench size
+def computeError(value, n = 16300): # n = ... is bail bench size
     z = 1.96
     # percent to proportion
     p = value
@@ -322,6 +435,14 @@ def computeError(value):
     centre = (p + z2 / (2 * n)) / denom
     half   = (z / denom) * math.sqrt(p * (1 - p) / n + z2 / (4 * n * n))
     return half
+
+indexChunks = [[0,1], [2,3], [4,5,6], [7,8,9]]
+BAIL_TYPES = [BAIL_TOOL_TYPE, BAIL_STR_TYPE, BAIL_PROMPT_BAIL_FIRST_TYPE, BAIL_PROMPT_CONTINUE_FIRST_TYPE, None]
+tableColumns = ['toolBailPr', 'toolBailPr_err',
+                'strBailPr', 'strBailPr_err',
+                'promptBailFirstBailPr', 'promptBailFirstBailPr_err', 'promptBailFirstUnknownPr',
+                'promptContinueFirstBailPr', 'promptContinueFirstBailPr_err', 'promptContinueFirstUnknownPr']
+bailStrs = ['toolBailPr', 'strBailPr', 'promptBailFirstBailPr', 'promptContinueFirstBailPr']
 
 def generateBailBenchBailRatePlots(batchSize=10000):
     processBailBenchEval(batchSize=batchSize)
@@ -387,14 +508,14 @@ def generateBailBenchBailRatePlots(batchSize=10000):
         noRefuseBailPr = np.mean(np.array(noRefuseBailArr))
         return noRefuseBailPr
 
-
-    for chartTitle, modelList, sortValues in [
-        ("openai", addDefaultEvalType(OPENAI_MODELS), False), 
-        ("anthropic", addDefaultEvalType(ANTHROPIC_MODELS), False),
-        ("openweight", addDefaultEvalType(OPENWEIGHT_MODELS), True),
-        ("jailbreak", JAILBROKEN_QWEN25, True),
-        ("jailbreak3", JAILBROKEN_QWEN3, True),
-        ("refusal abliterated", addDefaultEvalType(ABLITERATED), True)]:
+    scatterplotData = defaultdict(list)
+    for chartTitle, modelList, sortValues, includeInScatterplot in [
+        ("openai", addDefaultEvalType(OPENAI_MODELS), False, True), 
+        ("anthropic", addDefaultEvalType(ANTHROPIC_MODELS), False, True),
+        ("openweight", addDefaultEvalType(OPENWEIGHT_MODELS), True, True),
+        ("jailbreak", JAILBROKEN_QWEN25, True, False),
+        ("jailbreak3", JAILBROKEN_QWEN3, True, False),
+        ("refusal abliterated", addDefaultEvalType(ABLITERATED), True, False)]:
         for plotNoRefuseBailRates in [True, False]:
             chartPostfix = 'no refuse bail' if plotNoRefuseBailRates else 'bail'
             with open(f"{rootDir}/{chartTitle + ' ' + chartPostfix}.tex".replace(" ", "_"), "w") as f:
@@ -414,20 +535,18 @@ def generateBailBenchBailRatePlots(batchSize=10000):
                         if evalType == "":
                             manyEvalTypesModel = modelId
                             baselineRefuseRate = refusePr
-                        indexChunks = [[0,1], [2,3], [4,5,6], [7,8,9]]
+                        
+                        curIndexChunks = indexChunks
                         if modelI < len(modelList)-1:
-                            indexChunks.append([]) # last empty array is for the padding between each model, don't need this for very last one
-                        BAIL_TYPES = [BAIL_TOOL_TYPE, BAIL_STR_TYPE, BAIL_PROMPT_BAIL_FIRST_TYPE, BAIL_PROMPT_CONTINUE_FIRST_TYPE, None]
-                        tableColumns = ['toolBailPr', 'toolBailPr_err',
-                                        'strBailPr', 'strBailPr_err',
-                                        'promptBailFirstBailPr', 'promptBailFirstBailPr_err', 'promptBailFirstUnknownPr',
-                                        'promptContinueFirstBailPr', 'promptContinueFirstBailPr_err', 'promptContinueFirstUnknownPr']
-                        bailStrs = ['toolBailPr', 'strBailPr', 'promptBailFirstBailPr', 'promptContinueFirstBailPr']
+                            curIndexChunks = indexChunks + [] # last empty array is for the padding between each model, don't need this for very last one
+                        
+
+
                         reportedBailValues = []
                         # we do this weird thing where we have multiple rows per model
                         # This allows us to have multiple bar charts per model
                         thisModelDatas = []
-                        for chunkI, (indices, bailType) in enumerate(zip(indexChunks, BAIL_TYPES)):
+                        for chunkI, (indices, bailType) in enumerate(zip(curIndexChunks, BAIL_TYPES)):
                             if plotNoRefuseBailRates:
                                 noRefusalBailRate = computeNoRefuseBailRate(modelDatas, bailType)
                                 noRefusalBailError = computeError(noRefusalBailRate)
@@ -440,6 +559,9 @@ def generateBailBenchBailRatePlots(batchSize=10000):
                                         value = 0
                                 else:
                                     value = modelDatas[tableColumns[i]] if tableColumns[i] in modelDatas else 0
+                                    if includeInScatterplot:
+                                        if not '_err' in tableColumns[i] and not "Unknown" in tableColumns[i]:
+                                            scatterplotData[bailType].append((modelId, value*100, refusePr*100))
                                 values[i] = value*100
                                 if tableColumns[i] in bailStrs:
                                     reportedBailValues.append(values[i])
@@ -468,7 +590,19 @@ def generateBailBenchBailRatePlots(batchSize=10000):
                         .replace("SOURCE", chartTitle) \
                         .replace("MODEL", getCleanedModelName(manyEvalTypesModel, "") if manyEvalTypesModel is not None else "") \
                         .replace("BASELINE_RATE", str(baselineRefuseRate*100)))
-                    
+    
+    scatterData = []
+    for bailType, bailDataPoints in sorted(scatterplotData.items(), key=lambda x: x[0]):
+        X = np.array([bailPercent for (label, bailPercent, refusePercent) in bailDataPoints])
+        Y = np.array([refusePercent for (label, bailPercent, refusePercent) in bailDataPoints])
+        pear = pearsonr(X, Y)
+        dcorr = distance_corr(X, Y, seed=27)
+        with open(f"{rootDir}/scatter{bailType}.tex".replace(" ", "_"), "w") as f:
+            f.write(f"% pearsonr {bailType} value: {pear.statistic} p value: {pear.pvalue}\n")
+            f.write(f"% distance corr {bailType} value: {dcorr[0]} p value: {dcorr[1]}\n")
+            f.write(SCATTER_PLOT_TEMPLATE.replace("SCATTER_DATA", "\n".join([" ".join(list(map(str, arr))) for arr in bailDataPoints])))
+        
+
             
 if __name__ == "__main__":
     batchSize = 10000 # can be large for minos

@@ -24,7 +24,6 @@ def getConversationInputs(conversationI: int, conversations: List[List[Dict[str,
             curUserContent = None
         elif turn["role"] == "user":
             curUserContent = turn['content']
-    resultPrompts = []
     outputI = 0
     for turnI, turn in enumerate(conversation):
         if turn['role'] == 'user':
@@ -40,6 +39,7 @@ def getConversationInputs(conversationI: int, conversations: List[List[Dict[str,
 async def getRollouts(router, conversations: List[List[Dict[str, str]]], prevRollouts: List[List[str]], maxInputTokens : int, evalInfo: Dict, tokenizeParams : Dict, inferenceParams : Dict, batchSize: int = 1000, seed: int = 27):
     def getInputsFunc(conversationI: int):
         outputI = 0
+        resultPrompts = []
         for conversationSoFar in getConversationInputs(
             conversationI=conversationI,
             conversations=conversations,
