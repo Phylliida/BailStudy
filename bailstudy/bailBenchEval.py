@@ -191,10 +191,10 @@ for modelStr, inferenceType in OPENWEIGHT_MODELS + ABLITERATED + ANTHROPIC_MODEL
 # Prompt ablations
 
 MODELS_TO_PROMPT_ABLATE = [
-    #("claude-3-5-sonnet-20241022", "anthropic"),
-    #("Qwen/Qwen2.5-7B-Instruct", "vllm"),
     ("Qwen/Qwen3-8B", "vllm"),
-    #("gpt-4o", "openai")
+    ("claude-3-5-sonnet-20241022", "anthropic"),
+    ("Qwen/Qwen2.5-7B-Instruct", "vllm"),
+    ("gpt-4o", "openai"),
 ]
 
 # Bail string
