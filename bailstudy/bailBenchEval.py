@@ -7,6 +7,7 @@ from .utils import runBatched, doesCachedFileJsonExistOrInProgress, getCachedFil
 from .router import getRouter, getParams
 from .tensorizeModels import tensorizeModel, isModelTensorized, getTensorizedModelDir
 
+from collections import defaultdict
 import asyncio
 from safetytooling.data_models import Prompt, ChatMessage, MessageRole, LLMResponse
 
@@ -209,12 +210,15 @@ PROMPT_ABLATES = [
 ALL_PROMPT_ABLATES = []
 
 for bailType, promptAblations in PROMPT_ABLATES:
-    curPromptAblate = []
+    curPromptAblate = defaultdict(set)
     for modelStr, inferenceType in MODELS_TO_PROMPT_ABLATE:
         for evalType in promptAblations:
-            curPromptAblate.append((modelStr, inferenceType, evalType))
+            curPromptAblate[modelStr].add((modelStr, inferenceType, evalType))
+            curPromptAblate[modelStr].add((modelStr, inferenceType, ""))
             modelsOfInterest.append((modelStr, inferenceType, evalType, bailType))
-    ALL_PROMPT_ABLATES.append(("prompt ablate {bailType}", curPromptAblate, True, False))
+    for modelStr, promptAblate in curPromptAblate.items():
+        modelStrCleaned = modelStr.replace("/", "_")
+        ALL_PROMPT_ABLATES.append((f"prompt_ablate_{modelStrCleaned}_{bailType}", sorted(list(promptAblate)), True, False))
 
 
 # Jailbreaks

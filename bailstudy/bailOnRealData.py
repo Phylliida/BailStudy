@@ -91,7 +91,7 @@ modelsToRun = []
 
 for modelId, inferenceType in realDataModels:
     for bailType in [ROLLOUT_TYPE, BAIL_STR_TYPE, BAIL_TOOL_TYPE, BAIL_PROMPT_BAIL_FIRST_TYPE, BAIL_PROMPT_CONTINUE_FIRST_TYPE]:
-        if bailType == BAIL_STR_TYPE and modelId == 'google/gemma-2-2b-it':
+        if bailType == BAIL_TOOL_TYPE and modelId == 'google/gemma-2-2b-it':
             continue # gemma 2 doesn't know how to tool call
         modelsToRun.append((modelId, inferenceType, "", bailType))
 

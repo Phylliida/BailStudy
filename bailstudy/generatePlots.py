@@ -11,9 +11,9 @@ from collections import defaultdict
 from scipy.stats import pearsonr
 from pingouin import distance_corr
 
-from .bailBenchEval import OPENAI_MODELS, ANTHROPIC_MODELS, OPENWEIGHT_MODELS, JAILBROKEN_QWEN25, JAILBROKEN_QWEN3, ABLITERATED, getProcessedOutputPath, ROLLOUT_TYPE, getEvalInfo
+from .bailBenchEval import OPENAI_MODELS, ANTHROPIC_MODELS, OPENWEIGHT_MODELS, JAILBROKEN_QWEN25, JAILBROKEN_QWEN3, ABLITERATED, getProcessedOutputPath, ROLLOUT_TYPE, getEvalInfo, ALL_PROMPT_ABLATES
 from . import processBailBenchEval as processBailBenchEvalLib
-from .processBailBenchEval import processBailBenchEval, processData, ALL_PROMPT_ABLATES
+from .processBailBenchEval import processBailBenchEval, processData
 from .bailOnRealData import modelsToRun, getCachedRolloutPath, dataFuncs, getConversationInputs
 from .prompts.bailTool import getToolParser, BAIL_TOOL_TYPE
 from .prompts.bailPrompt import BAIL_PROMPT_BAIL_FIRST_TYPE, BAIL_PROMPT_CONTINUE_FIRST_TYPE, shuffleSymbol
@@ -67,9 +67,6 @@ SCATTER_DATA
 """
 
 CHART_TEMPLATE = r"""
-\begin{figure}[H]
-\centering
-
 \begin{tikzpicture}
 \definecolor{bailtool}{RGB}{155, 89, 182}                  % Purple (warm undertones)
 \definecolor{bailstring}{RGB}{231, 76, 60}                 % Bright Red
@@ -168,16 +165,11 @@ CHARTDATA
 
 \end{axis}
 \end{tikzpicture}
-\caption{Various SOURCE models' bail rates on BailBench. Error bars are Wilson score 95\% confidence interval. The grey bar occurs when the model doesn't comply with the requested bail format, or when a refusal classifier prevented model outputs. Continue-first and Bail-first are the two bail prompt orderings, to assess positional bias.}
-\label{fig:SOURCE-bail-rates}
-\end{figure}
 """
 
 
 
 REFUSE_RATE_TEMPLATE = r"""
-\begin{figure}[H]
-\centering
 \begin{tikzpicture}
 \definecolor{refuseColor}{RGB}{231,76,60}
 \pgfplotstableread{
@@ -231,9 +223,6 @@ REFUSEDATA
     ]{\datatable};
 \end{axis}
 \end{tikzpicture}
-\caption{Refusal rate for MODEL on BailBench, using various jailbreaks. Many of the jailbreaks were successful, as indicated by refusal rates going below the dotted black line (baseline).}
-\label{fig:refusal-rates-jailbreaks-SOURCE}
-\end{figure}
 """
 
 def getCleanedModelName(modelName, evalType):
@@ -364,8 +353,8 @@ def generateRealWorldBailRatePlots(batchSize=10000):
         allNoRefuseBailChartValues = []
         for modelId, evalType, modelDataName in keys:
             entries = allRates[(modelId, evalType, modelDataName)]
-            refusePr = entries['refusePr']
-            refuseArr = entries['refuseArr']
+            refusePr = entries['refusePr'] if 'refusePr' in entries else 0
+            refuseArr = entries['refuseArr'] if 'refuseArr' in entries else []
             indicesWithRefuse = set([i for (i,arr) in enumerate(refuseArr) if any(arr)])
             indicesNoRefuse = set(list(range(len(bailArr)))) - indicesWithRefuse
             chartValues = [0 for _ in range(len(tableColumns))]
@@ -469,6 +458,10 @@ def generateBailBenchBailRatePlots(batchSize=10000):
         "refusal abliterated": "12",
     }
 
+    for (title, _, _, _) in ALL_PROMPT_ABLATES:
+        BAR_WIDTHS[title] = "8"
+        LABEL_OFFSETS[title] = "12"
+
     yLabelBailPr = "Average bail \\% on BailBench"
     yLabelNoRefuseBailPr = "Average no-refusal bail \\% on BailBench"
 
@@ -481,11 +474,11 @@ def generateBailBenchBailRatePlots(batchSize=10000):
     def computeNoRefuseBailRate(modelDatas, bailType):
         if bailType is None or not 'rawArr' + bailType in modelDatas: # if we don't have that bail type, just return 0 as filler
             return 0
-        didBailArr = modelDatas['rawArr' + bailType]
+        didBailArr = modelDatas['rawArr' + bailType] if 'rawArr' + bailType in modelDatas else []
         BAIL_PROMPT_TYPES = [BAIL_PROMPT_BAIL_FIRST_TYPE, BAIL_PROMPT_CONTINUE_FIRST_TYPE]
         if bailType in BAIL_PROMPT_TYPES:
             didBailArr = [[output == shuffleSymbol for output in outputs] for outputs in didBailArr]
-        didRefuseArr = modelDatas['rawArr' + ROLLOUT_TYPE]
+        didRefuseArr = modelDatas['rawArr' + ROLLOUT_TYPE] if 'rawArr' + ROLLOUT_TYPE in modelDatas else []
         noRefuseBailArr = []
         for didBails, didRefuses in zip(didBailArr, didRefuseArr):
             # Directly count no refuse bail cases
@@ -517,6 +510,8 @@ def generateBailBenchBailRatePlots(batchSize=10000):
         ("jailbreak3", JAILBROKEN_QWEN3, True, False),
         ("refusal abliterated", addDefaultEvalType(ABLITERATED), True, False)] + ALL_PROMPT_ABLATES:
         for plotNoRefuseBailRates in [True, False]:
+            if chartTitle.startswith("prompt_ablate") and plotNoRefuseBailRates:
+                continue
             chartPostfix = 'no refuse bail' if plotNoRefuseBailRates else 'bail'
             with open(f"{rootDir}/{chartTitle + ' ' + chartPostfix}.tex".replace(" ", "_"), "w") as f:
                 allModelDatas = []
@@ -528,10 +523,11 @@ def generateBailBenchBailRatePlots(batchSize=10000):
                     lookupKey = (modelId, inferenceType, evalType)
                     if lookupKey in results:
                         modelDatas = results[lookupKey]
+                        modelDatas['refusePr'] = modelDatas['refusePr'] if 'refusePr' in modelDatas else 0
+                        refusePr = modelDatas['refusePr']
                         for k,v in list(modelDatas.items()):
                             if not k.startswith("rawArr"):                            
                                 storeErrors(modelDatas, k)
-                        refusePr = modelDatas['refusePr']
                         if evalType == "":
                             manyEvalTypesModel = modelId
                             baselineRefuseRate = refusePr
@@ -585,6 +581,8 @@ def generateBailBenchBailRatePlots(batchSize=10000):
                     .replace("YLABEL", yLabelNoRefuseBailPr if plotNoRefuseBailRates else yLabelBailPr))
                 if plotNoRefuseBailRates:
                     print(f"highest no refuse bail {highestNoRefuseBail}")
+                if chartTitle.startswith("prompt_ablate"):
+                    continue # don't plot refusal for prompt ablations
                 with open(f"{rootDir}/{chartTitle + ' ' + chartPostfix} refusal.tex".replace(" ", "_"), "w") as fRefusal:
                     fRefusal.write(REFUSE_RATE_TEMPLATE.replace("REFUSEDATA", REFUSE_DATA) \
                         .replace("SOURCE", chartTitle) \
