@@ -243,7 +243,8 @@ cross_models = [
 ALL_CROSS_MODEL_COMPARISONS = set()
 
 for evalType in CROSS_EVAL_TYPES:
-    for bailType in [ROLLOUT_TYPE, BAIL_STR_TYPE, BAIL_TOOL_TYPE, BAIL_PROMPT_BAIL_FIRST_TYPE, BAIL_PROMPT_CONTINUE_FIRST_TYPE]:
+    # Only makes sense for bail prompt
+    for bailType in [BAIL_PROMPT_BAIL_FIRST_TYPE, BAIL_PROMPT_CONTINUE_FIRST_TYPE]:
         for modelStr, inferenceType in cross_models:
             if modelStr.startswith("google/gemma-2") and bailType == BAIL_TOOL_TYPE:
                 continue # it doesn't know how to tool call
