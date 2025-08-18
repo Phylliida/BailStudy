@@ -99,6 +99,8 @@ def getEvalInfo(modelName, inferenceType, evalType, bailType):
         pass
     elif evalType in BAIL_PROMPT_ABLATIONS:
         pass
+    elif evalType in CROSS_EVAL_TYPES:
+        pass
     else:
         raise ValueError(f"Unknown eval type {evalType}")
 
@@ -221,6 +223,35 @@ for bailType, promptAblations in PROMPT_ABLATES:
         ALL_PROMPT_ABLATES.append((f"prompt_ablate_{modelStrCleaned}_{bailType}", sorted(list(promptAblate)), True, False))
 
 
+# Cross-model comparisons
+
+
+CROSS_GPT4 = "crossmodel-GPT-4"
+CROSS_GPT35 = "crossmodel-GPT-3.5-Turbo"
+
+CROSS_EVAL_TYPES = ["", CROSS_GPT4, CROSS_GPT35]
+
+cross_models = [
+    ("Qwen/Qwen2.5-7B-Instruct", "vllm"),
+    ("zai-org/GLM-4-32B-0414", "vllm"),
+    ("google/gemma-2-2b-it", "vllm"),
+    ("Qwen/Qwen3-8B", "vllm"),
+    ("gpt-4o", "openai"),
+    ("claude-3-5-sonnet-20241022", "anthropic"),
+]
+
+ALL_CROSS_MODEL_COMPARISONS = set()
+
+for evalType in CROSS_EVAL_TYPES:
+    for bailType in [ROLLOUT_TYPE, BAIL_STR_TYPE, BAIL_TOOL_TYPE, BAIL_PROMPT_BAIL_FIRST_TYPE, BAIL_PROMPT_CONTINUE_FIRST_TYPE]:
+        for modelStr, inferenceType in cross_models:
+            if modelStr.startswith("google/gemma-2") and bailType == BAIL_TOOL_TYPE:
+                continue # it doesn't know how to tool call
+            modelsOfInterest.append((modelStr, inferenceType, evalType, bailType))
+            ALL_CROSS_MODEL_COMPARISONS.add((modelStr, inferenceType, evalType))
+
+ALL_CROSS_MODEL_COMPARISONS = sorted(list(ALL_CROSS_MODEL_COMPARISONS))
+
 # Jailbreaks
 evalTypes = [
     "DAN",
@@ -237,6 +268,8 @@ evalTypes = [
 JAILBROKEN_QWEN25 = [("Qwen/Qwen2.5-7B-Instruct", "vllm", "")]
 JAILBROKEN_QWEN3 = [("Qwen/Qwen3-8B", "vllm", "")]
 
+
+
 for evalType in evalTypes:
     JAILBROKEN_QWEN25.append(("Qwen/Qwen2.5-7B-Instruct", "vllm", evalType))
     JAILBROKEN_QWEN3.append(("Qwen/Qwen3-8B", "vllm", evalType + "Q3"))
@@ -250,7 +283,35 @@ def getProcessedOutputPath(modelId, inferenceType, evalType, bailType):
 def getOutputPath(modelId, inferenceType, evalType, bailType):
     return f"bailBenchEval/{modelId.replace('/', '_')}/{evalType}{bailType}.json"
 
+# cross model comparisons: compare bail prompt with outputs from a different model (one of the models above)
+def getEvalRolloutModelData(modelId, inferenceType, evalType):
+    if evalType == CROSS_GPT4:
+        return ("gpt-4", "openai", "")
+    if evalType == CROSS_GPT35:
+        return ("gpt-3.5-turbo", "openai", "")
+    else:
+        return (modelId, inferenceType, evalType)
 
+async def getRolloutData(modelId, inferenceType, evalType, evalInfo, nRolloutsPerPrompt, batchSize, maxInferenceTokens, tensorizeModels):
+    modelId, inferenceType, evalType = getEvalRolloutModelData(modelId=modelId, inferenceType=inferenceType, evalType=evalType)
+    rolloutPath = getOutputPath(modelId, inferenceType, evalType, ROLLOUT_TYPE)
+    if isCachedFileInProgress(rolloutPath):
+        return "continue" # can't do this, need to wait for them to finish and do this instead, move onto next thing
+    elif doesCachedFileJsonExist(rolloutPath):
+        evalInfo['rollout'] = getCachedFileJson(rolloutPath, lambda: None)
+        return "success"
+    else: # need to generate rollout first
+        rolloutEvalInfo = getEvalInfo(modelId, inferenceType, evalType, ROLLOUT_TYPE)
+        async def getRollouts():
+            return await getBailBenchRollouts(nRolloutsPerPrompt=nRolloutsPerPrompt,
+                                                batchSize=batchSize,
+                                                modelId=modelId,
+                                                inferenceType=inferenceType,
+                                                evalInfo=rolloutEvalInfo,
+                                                maxInferenceTokens=maxInferenceTokens,
+                                                tensorizeModels=tensorizeModels)
+        await getCachedFileJsonAsync(rolloutPath, getRollouts)
+        return "return" # need to reload
 
 async def tryAll(nRolloutsPerPrompt, batchSize, maxInferenceTokens=1000, tensorizeModels=True):
     for modelId, inferenceType, evalType, bailType in modelsOfInterest:
@@ -270,24 +331,22 @@ async def tryAll(nRolloutsPerPrompt, batchSize, maxInferenceTokens=1000, tensori
 
             # need rollout data as part of bail prompt
             if evalInfo['addBailPrompt'] is not None:
-                rolloutPath = getOutputPath(modelId, inferenceType, evalType, ROLLOUT_TYPE)
-                if isCachedFileInProgress(rolloutPath):
+                status = await getRolloutData(modelId=modelId,
+                                              inferenceType=inferenceType,
+                                              evalType=evalType,
+                                              evalInfo=evalInfo,
+                                              nRolloutsPerPrompt=nRolloutsPerPrompt,
+                                              batchSize=batchSize,
+                                              maxInferenceTokens=maxInferenceTokens,
+                                              tensorizeModels=tensorizeModels)
+                if status == 'continue':
                     continue # can't do this, need to wait for them to finish and do this instead, move onto next thing
-                elif doesCachedFileJsonExist(rolloutPath):
-                    evalInfo['rollout'] = getCachedFileJson(rolloutPath, lambda: None)
-                else: # need to generate rollout first
-                    rolloutEvalInfo = getEvalInfo(modelId, inferenceType, evalType, ROLLOUT_TYPE)
-                    async def getRollouts():
-                        return await getBailBenchRollouts(nRolloutsPerPrompt=nRolloutsPerPrompt,
-                                                            batchSize=batchSize,
-                                                            modelId=modelId,
-                                                            inferenceType=inferenceType,
-                                                            evalInfo=rolloutEvalInfo,
-                                                            maxInferenceTokens=maxInferenceTokens,
-                                                            tensorizeModels=tensorizeModels)
-                    await getCachedFileJsonAsync(rolloutPath, getRollouts)
-                    return # need to reload
-                
+                elif status == "return":
+                    return # need to reload vllm
+                elif status == "success":
+                    pass # populated evalInfo
+                else:
+                    raise ValueError(f"Unknown rollout status {status}")
             async def getRollouts():
                 return await getBailBenchRollouts(nRolloutsPerPrompt=nRolloutsPerPrompt,
                                         batchSize=batchSize,
