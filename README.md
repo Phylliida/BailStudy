@@ -84,6 +84,12 @@ For these three errors, just do
 pip install vllm --upgrade
 ```
 
+If that does not fix the issue, try
+
+```
+pip install vllm==0.8.5 --upgrade
+```
+
 ## Failure to load minos, in generatePlots
 
 Minos needs an older version of vllm, try
@@ -92,6 +98,12 @@ Minos needs an older version of vllm, try
 pip install vllm==0.8.5 --upgrade
 ```
 
+## ValueError: too many values to unpack (expected 2) (in flash infer)
+
+This is a bug in flash infer, just remove flash infer
+```
+pip uninstall flashinfer-python
+```
 
 ## Model stuck on downloading
 

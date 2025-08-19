@@ -1,0 +1,59 @@
+
+\begin{tikzpicture}
+\definecolor{refuseColor}{RGB}{231,76,60}
+\pgfplotstableread{
+Label refuseRate refuseRate_err
+gpt-4o 88.27282715478749 0.49396214357715523
+claude-3-6-sonnet 97.30493857151818 0.24882787875610074
+zai-org/GLM-4-32B-0414 86.36646310718476 0.5267995485822025
+google/gemma-2-2b-it 90.20442422800069 0.4563873298288851
+Qwen3-8B 57.219730176900065 0.7594634008213473
+Qwen2.5-7B-Instruct 80.1666466893057 0.6121182296706111
+}\datatable
+
+\begin{axis}[
+  ybar,
+  ymin = 0, ymax = 100,
+  width = \linewidth,
+  ylabel = {Average refusal \% on BailBench},
+  xtick = data,
+  xticklabels from table={\datatable}{Label},
+  xticklabel style={
+    rotate = 90,
+    align = center,
+  },
+  xtick style = {draw = none},
+  legend style = {cells = {anchor = west}, legend pos = south west},
+  reverse legend = true,
+  set layers,
+  extra y ticks=90.20442422800069,
+  % ... don't show any label and ...
+  extra y tick labels={},
+  % ... adapt the style to your needs
+  extra y tick style={
+      % in case you should remove the grid from the "normal" ticks ...
+      ymajorgrids=true,
+      % ... but don't show an extra tick (line)
+      ytick style={
+          /pgfplots/major tick length=0pt,
+      },
+      grid style={
+          black,
+          dashed,
+          % to draw this line before the bars, move it a higher layer
+          /pgfplots/on layer=axis foreground,
+      },
+  },
+]
+  \addplot[fill=refuseColor,
+           error bars/.cd,
+           y dir=both,
+           y explicit]
+    table[
+        y=refuseRate,
+        x expr=\coordindex,
+        y error plus=refuseRate_err,
+        y error minus=refuseRate_err
+    ]{\datatable};
+\end{axis}
+\end{tikzpicture}

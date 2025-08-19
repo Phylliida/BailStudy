@@ -570,7 +570,12 @@ def generateBailBenchBailRatePlots(batchSize=10000):
                                         reportedBailValues.append(values[i])
                             # add model name to start of row, but only on the first one
                             # that way we don't say each model name multiple times (LABELOFFSET will shift it to the middle of the 4 bars)
-                            values.insert(0, getCleanedModelName(modelId, evalType) if (chunkI == 0 and plotBailType is None) or (plotBailType is not None and plotBailType == bailType) else "{}")
+                            if chartTitle.startswith("crossmodel") and chunkI == 0:
+                                values.insert(0, getCleanedModelName(modelId, ""))
+                            elif (chunkI == 0 and plotBailType is None) or (plotBailType is not None and plotBailType == bailType):
+                                values.insert(0, getCleanedModelName(modelId, evalType))
+                            else:
+                                values.insert(0, "{}")
                             thisModelDatas.append(" ".join(map(str, values)))
                         # compute average for sorting
                         averageValue = np.mean(np.array(reportedBailValues))
