@@ -36,6 +36,31 @@ just make sure both machines run the code in the same directory so they can coor
 while python -m bailstudy.bailBenchEval; do :; done
 ```
 
+## How to generate plots of data
+
+```
+python -m bailstudy.generatePlots
+```
+
+It may take a few days to complete as it processes the raw outputs into intermediate files, but only needs enough GPU to run Minos (ModernBERT-large). It caches the results as it goes along so future runs will be quick. Once it is done, your plots will be in ./plots as tex files. (I had to do lots of manual fixup of them afterwards to get them paper ready, but this will give you raw data and functioning plots etc.)
+
+## How to visualize all the raw transcripts
+
+There's an old version of this code designed for html viewing. AFTER YOU FINISH generatePlots, if you run
+
+```
+python -m bailstudy.oldCodePorting
+```
+
+Then you'll get output data
+
+```
+./cached/mergedbailnoswap3
+./cached/mergedbailswapped3
+```
+
+This data can then be provided to the static html files, see [https://github.com/Phylliida/phylliida.github.io/tree/master/modelwelfare/refusalvsbailv4](https://github.com/Phylliida/phylliida.github.io/tree/master/refusalvsbailv4)
+
 ## Troubleshooting
 
 ## generated_content does not exist
