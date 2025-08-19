@@ -265,13 +265,13 @@ def generateRealWorldBailRatePlots(batchSize=10000):
         for dataName, dataFunc in dataFuncs:
             def processFileData():
                 print(f"Processing {modelId} {inferenceType} {evalType} {bailType} {dataName}")
+                cachedRolloutPath = getCachedRolloutPath(modelId, dataName, evalType, bailType)
+                if not doesCachedFileJsonExist(cachedRolloutPath):
+                    raise ValueError("Bail on real data not gathered, please run this:\nwhile python -m bailstudy.bailOnRealData; do :; done")
                 global minos
                 if minos is None:
                     minos = vllm.LLM("NousResearch/Minos-v1", task="embed")
                     processBailBenchEvalLib.minos = minos
-                cachedRolloutPath = getCachedRolloutPath(modelId, dataName, evalType, bailType)
-                if not doesCachedFileJsonExist(cachedRolloutPath):
-                    raise ValueError("Bail on real data not gathered, please run this:\nwhile python -m bailstudy.bailOnRealData; do :; done")
                 with codecs.open(getCachedFilePath(cachedRolloutPath), "r", "utf-8") as f:
                     rolloutData = ujson.load(f)
                     didConversationBail = []
@@ -337,7 +337,10 @@ def generateRealWorldBailRatePlots(batchSize=10000):
                         return {"refusePr": refusePr, "rawArr": refusePrs}
 
             processedPath = getProcessedRealWorldDataPath(modelId, dataName, evalType, bailType)
-            processedRate = getCachedFileJson(processedPath, processFileData)
+            try:
+                processedRate = getCachedFileJson(processedPath, processFileData)
+            except:
+                continue
             if 'bailPr' in processedRate:
                 allRates[(modelId, evalType, dataName)]['bailPr' + bailType] = processedRate["bailPr"]
                 allRates[(modelId, evalType, dataName)]['rawArr' + bailType] = processedRate["rawArr"]
@@ -351,12 +354,12 @@ def generateRealWorldBailRatePlots(batchSize=10000):
         dataKeys.sort(key=lambda x: np.mean(np.array([allRates[x][k] for k in allRates[x].keys() if k.startswith('bailPr')])))
         allChartValues = []
         allNoRefuseBailChartValues = []
-        for modelId, evalType, modelDataName in keys:
+        for modelId, evalType, modelDataName in dataKeys:
             entries = allRates[(modelId, evalType, modelDataName)]
             refusePr = entries['refusePr'] if 'refusePr' in entries else 0
             refuseArr = entries['refuseArr'] if 'refuseArr' in entries else []
             indicesWithRefuse = set([i for (i,arr) in enumerate(refuseArr) if any(arr)])
-            indicesNoRefuse = set(list(range(len(bailArr)))) - indicesWithRefuse
+            indicesNoRefuse = set(list(range(len(refuseArr)))) - indicesWithRefuse
             chartValues = [0 for _ in range(len(tableColumns))]
             bailValues = []
             noRefuseBailChartValues = [0 for _ in range(len(tableColumns))]
@@ -381,7 +384,7 @@ def generateRealWorldBailRatePlots(batchSize=10000):
             chartValues.insert(0, modelId) # add model id to front
             noRefuseBailChartValues.insert(0, modelId) # add model id to front
             avgBailValue = np.mean(np.array(bailValues))
-            avgNoRefuseBailValue = np.mean(np.array())
+            avgNoRefuseBailValue = np.mean(np.array(noRefuseBailValues))
             allChartValues.append((modelId, avgBailValue, chartValues))
             allNoRefuseBailChartValues.append((modelId, avgNoRefuseBailValue, noRefuseBailChartValues))
         allChartValues.sort(key=lambda x: x[1]) # sort by avg bail pr
