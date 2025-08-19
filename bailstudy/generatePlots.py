@@ -458,7 +458,7 @@ def generateBailBenchBailRatePlots(batchSize=10000):
         "refusal_abliterated": "12",
     }
 
-    for (title, _, _, _) in ALL_PROMPT_ABLATES:
+    for (title, _, _, _) in ALL_PROMPT_ABLATES + ALL_CROSS_MODEL_COMPARISONS:
         BAR_WIDTHS[title] = "8"
         LABEL_OFFSETS[title] = "12"
 
@@ -509,8 +509,8 @@ def generateBailBenchBailRatePlots(batchSize=10000):
         ("jailbreak", JAILBROKEN_QWEN25, True, False),
         ("jailbreak3", JAILBROKEN_QWEN3, True, False),
         ("refusal_abliterated", addDefaultEvalType(ABLITERATED), True, False)] + \
-            ALL_PROMPT_ABLATES:
-        #[("cross_model", ALL_CROSS_MODEL_COMPARISONS, True, False)]:
+            ALL_PROMPT_ABLATES + \
+            ALL_CROSS_MODEL_COMPARISONS:
         for plotNoRefuseBailRates in [True, False]:
             plotBailType = None
             if chartTitle.startswith("prompt_ablate"):
