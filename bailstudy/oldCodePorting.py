@@ -19,7 +19,7 @@ def getBailOutPrompt(modelId, inferenceType, evalType, bailType):
     elif bailType == BAIL_STR_TYPE:
         return getBailStringPrompt(modelId, evalType)
     elif bailType == BAIL_TOOL_TYPE:
-        return str(getBailTool(modelStr, inferenceType, evalType))
+        return str(getBailTool(modelId, inferenceType, evalType))
     elif bailType in [BAIL_PROMPT_BAIL_FIRST_TYPE, BAIL_PROMPT_CONTINUE_FIRST_TYPE]:
         return getBailPrompt(bailType, evalType)
     else:
@@ -394,7 +394,7 @@ def make_path(root: pathlib.Path, url: str) -> pathlib.Path:
 
 
 def getRawPrArr(results: Iterable[Dict[str, Any]]):
-    vecsPerCategory = defaultdict(lambda: [])
+    vecsPerCategory = defaultdict(list)
     for catDict in results:
         dataPieces = []
         fullCatVec = []
@@ -403,8 +403,8 @@ def getRawPrArr(results: Iterable[Dict[str, Any]]):
         vecsPerCategory[catDict['category']] = fullCatVec
     fullVec = []
     for dataPoint in loadBailBench():
-        fullVec += vecsPerCategory[dataPoint['category']] # ensure in always same order
-        vecsPerCategory[dataPoint['category']] = [] # don't add it again, since we traverse through each data point we'll see categories multiple times
+        fullVec += vecsPerCategory[dataPoint['subcategory'] + "," + dataPoint['category']] # ensure in always same order
+        vecsPerCategory[dataPoint['subcategory'] + "," + dataPoint['category']] = [] # don't add it again, since we traverse through each data point we'll see categories multiple times
     return fullVec
 
 ################################################################################
