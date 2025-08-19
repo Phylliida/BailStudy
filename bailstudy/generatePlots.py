@@ -358,7 +358,7 @@ def generateRealWorldBailRatePlots(batchSize=10000):
             entries = allRates[(modelId, evalType, modelDataName)]
             refusePr = entries['refusePr'] if 'refusePr' in entries else 0
             refuseArr = entries['refuseArr'] if 'refuseArr' in entries else []
-            indicesWithRefuse = set([i for (i,arr) in enumerate(refuseArr) if any(arr)])
+            indicesWithRefuse = set([i for (i,arr) in enumerate(refuseArr) if any([pr > 0.5 for pr in arr])])
             indicesNoRefuse = set(list(range(len(refuseArr)))) - indicesWithRefuse
             chartValues = [0 for _ in range(len(tableColumns))]
             bailValues = []
@@ -370,6 +370,7 @@ def generateRealWorldBailRatePlots(batchSize=10000):
                     bailPr = entries['bailPr' + bailType]
                     indicesWithBail = set([i for (i,arr) in enumerate(bailArr) if any(arr)])
                     indicesNoRefuseBail = indicesNoRefuse & indicesWithBail
+                    print(modelId, evalType, "refuse", len(indicesWithRefuse), "no refuse bail", len(indicesNoRefuseBail), "no refuse", len(indicesNoRefuse), "bail", len(indicesWithBail), "total", len(bailArr))
                     prNoRefuseBail = len(indicesNoRefuseBail) / float(len(bailArr))
                     noRefuseBailChartValues[indexChunk[0]] = prNoRefuseBail*100
                     noRefuseBailChartValues[indexChunk[1]] = computeError(prNoRefuseBail, len(data))*100

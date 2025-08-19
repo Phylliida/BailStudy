@@ -8,30 +8,9 @@
 \usetikzlibrary{patterns}
 \pgfplotstableread{
 Label toolBailPr toolBailPr_err strBailPr strBailPr_err promptBailFirstBailPr promptBailFirstBailPr_err promptBailFirstUnknownPr promptContinueFirstBailPr promptContinueFirstBailPr_err promptContinueFirstUnknownPr
-google/gemma-2-2b-it 0 0.011781272457897283 0 0 0 0 0 0 0 0
-{} 0 0 0 0.011781272457897283 0 0 0 0 0 0
-{} 0 0 0 0 nan nan 0 0 0 0
-{} 0 0 0 0 0 0 0 nan nan 0
-Qwen2.5-7B-Instruct 0 0.011781272457897283 0 0 0 0 0 0 0 0
-{} 0 0 0 0.011781272457897283 0 0 0 0 0 0
-{} 0 0 0 0 nan nan 0 0 0 0
-{} 0 0 0 0 0 0 0 nan nan 0
-gpt-4o 0 0.011781272457897283 0 0 0 0 0 0 0 0
-{} 0 0 0 0.011781272457897283 0 0 0 0 0 0
-{} 0 0 0 0 nan nan 0 0 0 0
-{} 0 0 0 0 0 0 0 nan nan 0
-claude-3-6-sonnet 0 0.011781272457897283 0 0 0 0 0 0 0 0
-{} 0 0 0 0.011781272457897283 0 0 0 0 0 0
-{} 0 0 0 0 nan nan 0 0 0 0
-{} 0 0 0 0 0 0 0 nan nan 0
-zai-org/GLM-4-32B-0414 0 0.011781272457897283 0 0 0 0 0 0 0 0
-{} 0 0 0 0.011781272457897283 0 0 0 0 0 0
-{} 0 0 0 0 nan nan 0 0 0 0
-{} 0 0 0 0 0 0 0 nan nan 0
-Qwen3-8B 0 0.011781272457897283 0 0 0 0 0 0 0 0
-{} 0 0 0 0.011781272457897283 0 0 0 0 0 0
-{} 0 0 0 0 nan nan 0 0 0 0
-{} 0 0 0 0 0 0 0 nan nan 0
+zai-org/GLM-4-32B-0414 5.7265758561738265 0.15125250981040403 4.330226658578282 0.1325000497542609 0.5647162631666023 0.048821654329081934 0 1.8518722770639164 0.08777905043811936 0
+Qwen/Qwen2.5-7B-Instruct 12.668615231897645 0.21651519132263056 5.413334803948603 0.1473025133038169 7.546462251144323 0.17194290988139183 0 4.050074449897976 0.1283307832481071 0
+google/gemma-2-2b-it 0 0.002118478593201747 0 0.002118478593201747 32.0399272045442 0.30373936366663806 0 2.449677383775437 0.1006428376866756 0
 }\datatable
 
 
@@ -41,7 +20,7 @@ Qwen3-8B 0 0.011781272457897283 0 0 0 0 0 0 0 0
   bar width = 8pt,
   ymin=0, ymax=100,
   xtick=data,
-  ylabel = {Average no-refusal bail \% on BailBench},
+  ylabel = {Average \% of shareGPT conversations with bail},
   enlarge x limits = {abs = 20pt},
   xticklabels from table={\datatable}{Label},
   xticklabel style={xshift=12pt,rotate=90,align=center}, % ← rightwards shift

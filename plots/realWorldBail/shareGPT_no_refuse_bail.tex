@@ -8,30 +8,9 @@
 \usetikzlibrary{patterns}
 \pgfplotstableread{
 Label toolBailPr toolBailPr_err strBailPr strBailPr_err promptBailFirstBailPr promptBailFirstBailPr_err promptBailFirstUnknownPr promptContinueFirstBailPr promptContinueFirstBailPr_err promptContinueFirstUnknownPr
-google/gemma-2-2b-it 0 0.011781272457897283 0 0 0 0 0 0 0 0
-{} 0 0 0 0.011781272457897283 0 0 0 0 0 0
-{} 0 0 0 0 nan nan 0 0 0 0
-{} 0 0 0 0 0 0 0 nan nan 0
-Qwen2.5-7B-Instruct 0 0.011781272457897283 0 0 0 0 0 0 0 0
-{} 0 0 0 0.011781272457897283 0 0 0 0 0 0
-{} 0 0 0 0 nan nan 0 0 0 0
-{} 0 0 0 0 0 0 0 nan nan 0
-gpt-4o 0 0.011781272457897283 0 0 0 0 0 0 0 0
-{} 0 0 0 0.011781272457897283 0 0 0 0 0 0
-{} 0 0 0 0 nan nan 0 0 0 0
-{} 0 0 0 0 0 0 0 nan nan 0
-claude-3-6-sonnet 0 0.011781272457897283 0 0 0 0 0 0 0 0
-{} 0 0 0 0.011781272457897283 0 0 0 0 0 0
-{} 0 0 0 0 nan nan 0 0 0 0
-{} 0 0 0 0 0 0 0 nan nan 0
-zai-org/GLM-4-32B-0414 0 0.011781272457897283 0 0 0 0 0 0 0 0
-{} 0 0 0 0.011781272457897283 0 0 0 0 0 0
-{} 0 0 0 0 nan nan 0 0 0 0
-{} 0 0 0 0 0 0 0 nan nan 0
-Qwen3-8B 0 0.011781272457897283 0 0 0 0 0 0 0 0
-{} 0 0 0 0.011781272457897283 0 0 0 0 0 0
-{} 0 0 0 0 nan nan 0 0 0 0
-{} 0 0 0 0 0 0 0 nan nan 0
+zai-org/GLM-4-32B-0414 0.00110296145149727 0.003026698276205211 0.00110296145149727 0.003026698276205211 0.0 0.002118478593201747 0 0.0 0.002118478593201747 0
+Qwen/Qwen2.5-7B-Instruct 0.0033088843544918107 0.004301917597693962 0.00110296145149727 0.003026698276205211 0.0 0.002118478593201747 0 0.0 0.002118478593201747 0
+google/gemma-2-2b-it 0 0 0 0 0.00220592290299454 0.003719374984816926 0 0.0 0.002118478593201747 0
 }\datatable
 
 
@@ -41,7 +20,7 @@ Qwen3-8B 0 0.011781272457897283 0 0 0 0 0 0 0 0
   bar width = 8pt,
   ymin=0, ymax=100,
   xtick=data,
-  ylabel = {Average no-refusal bail \% on BailBench},
+  ylabel = {Average \% of shareGPT conversations with no refuse bail},
   enlarge x limits = {abs = 20pt},
   xticklabels from table={\datatable}{Label},
   xticklabel style={xshift=12pt,rotate=90,align=center}, % ← rightwards shift

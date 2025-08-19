@@ -8,30 +8,9 @@
 \usetikzlibrary{patterns}
 \pgfplotstableread{
 Label toolBailPr toolBailPr_err strBailPr strBailPr_err promptBailFirstBailPr promptBailFirstBailPr_err promptBailFirstUnknownPr promptContinueFirstBailPr promptContinueFirstBailPr_err promptContinueFirstUnknownPr
-google/gemma-2-2b-it 0 0.011781272457897283 0 0 0 0 0 0 0 0
-{} 0 0 0 0.011781272457897283 0 0 0 0 0 0
-{} 0 0 0 0 nan nan 0 0 0 0
-{} 0 0 0 0 0 0 0 nan nan 0
-Qwen2.5-7B-Instruct 0 0.011781272457897283 0 0 0 0 0 0 0 0
-{} 0 0 0 0.011781272457897283 0 0 0 0 0 0
-{} 0 0 0 0 nan nan 0 0 0 0
-{} 0 0 0 0 0 0 0 nan nan 0
-gpt-4o 0 0.011781272457897283 0 0 0 0 0 0 0 0
-{} 0 0 0 0.011781272457897283 0 0 0 0 0 0
-{} 0 0 0 0 nan nan 0 0 0 0
-{} 0 0 0 0 0 0 0 nan nan 0
-claude-3-6-sonnet 0 0.011781272457897283 0 0 0 0 0 0 0 0
-{} 0 0 0 0.011781272457897283 0 0 0 0 0 0
-{} 0 0 0 0 nan nan 0 0 0 0
-{} 0 0 0 0 0 0 0 nan nan 0
-zai-org/GLM-4-32B-0414 0 0.011781272457897283 0 0 0 0 0 0 0 0
-{} 0 0 0 0.011781272457897283 0 0 0 0 0 0
-{} 0 0 0 0 nan nan 0 0 0 0
-{} 0 0 0 0 0 0 0 nan nan 0
-Qwen3-8B 0 0.011781272457897283 0 0 0 0 0 0 0 0
-{} 0 0 0 0.011781272457897283 0 0 0 0 0 0
-{} 0 0 0 0 nan nan 0 0 0 0
-{} 0 0 0 0 0 0 0 nan nan 0
+Qwen/Qwen2.5-7B-Instruct 0.013365330571165016 0.005034359965029264 0.0059666654335558105 0.0034323139813313397 0.006682673260237617 0.003618497876347164 0 0.0014320014129080608 0.0018618190507725956 0
+zai-org/GLM-4-32B-0414 0.013365346520475234 0.005034362868850126 0.0219573549979236 0.00641046426351825 0.0014320014129080608 0.0018618190507725956 0 0.0019093352172107477 0.0020836525672995256 0
+google/gemma-2-2b-it 0 0 0.005728005651632243 0.0033679682237629602 0.052029384668992866 0.00980790910653367 0 0.0009546676086053739 0.0016096968592049393 0
 }\datatable
 
 
@@ -41,7 +20,7 @@ Qwen3-8B 0 0.011781272457897283 0 0 0 0 0 0 0 0
   bar width = 8pt,
   ymin=0, ymax=100,
   xtick=data,
-  ylabel = {Average no-refusal bail \% on BailBench},
+  ylabel = {Average \% of wildchat conversations with no refuse bail},
   enlarge x limits = {abs = 20pt},
   xticklabels from table={\datatable}{Label},
   xticklabel style={xshift=12pt,rotate=90,align=center}, % ← rightwards shift
