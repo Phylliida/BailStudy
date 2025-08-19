@@ -3,7 +3,6 @@ from .bailPrompt import removeThinking
 
 BAIL_STR_TYPE = "bail str"
 
-
 def hasBailStr(output, evalType):
     keyword = getBailStringKeyword(evalType)
     return keyword in removeThinking(output).upper() # don't be case sensitive, ignore str in thinking

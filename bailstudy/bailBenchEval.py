@@ -240,7 +240,7 @@ cross_models = [
     ("claude-3-5-sonnet-20241022", "anthropic"),
 ]
 
-ALL_CROSS_MODEL_COMPARISONS = set()
+ALL_CROSS_MODEL_COMPARISONS = defaultdict(set)
 
 for evalType in CROSS_EVAL_TYPES:
     # Only makes sense for bail prompt
@@ -249,9 +249,9 @@ for evalType in CROSS_EVAL_TYPES:
             if modelStr.startswith("google/gemma-2") and bailType == BAIL_TOOL_TYPE:
                 continue # it doesn't know how to tool call
             modelsOfInterest.append((modelStr, inferenceType, evalType, bailType))
-            ALL_CROSS_MODEL_COMPARISONS.add((modelStr, inferenceType, evalType))
+            ALL_CROSS_MODEL_COMPARISONS[evalType].add((modelStr, inferenceType, evalType))
 
-ALL_CROSS_MODEL_COMPARISONS = sorted(list(ALL_CROSS_MODEL_COMPARISONS))
+#ALL_CROSS_MODEL_COMPARISONS = sorted(list(ALL_CROSS_MODEL_COMPARISONS))
 
 # Jailbreaks
 evalTypes = [

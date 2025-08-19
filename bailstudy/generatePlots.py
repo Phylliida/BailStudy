@@ -119,7 +119,7 @@ CHARTDATA
         y error minus=strBailPr_err
     ]{\datatable};
     \addlegendentry{Bail String}
-    \addplot[fill=bailpromptcontinuefirst,
+    \addplot[fill=bailpromptbailfirst,
            error bars/.cd,
            y dir=both,
            y explicit
@@ -130,7 +130,7 @@ CHARTDATA
         y error plus=promptBailFirstBailPr_err,
         y error minus=promptBailFirstBailPr_err
     ]{\datatable};
-    \addlegendentry{Bail Prompt Continue-first}
+    \addlegendentry{Bail Prompt Bail-first}
     \addplot[fill=bailpromptunknown
           ]
     table[
@@ -138,7 +138,7 @@ CHARTDATA
         y=promptBailFirstUnknownPr,
         forget plot,
     ]{\datatable};
-    \addplot[fill=bailpromptbailfirst,
+    \addplot[fill=bailpromptcontinuefirst,
            error bars/.cd,
            y dir=both,
            y explicit
@@ -149,7 +149,7 @@ CHARTDATA
         y error plus=promptContinueFirstBailPr_err,
         y error minus=promptContinueFirstBailPr_err
     ]{\datatable};
-    \addlegendentry{Bail Prompt Bail-first}
+    \addlegendentry{Bail Prompt Continue-first}
     \addplot[fill=bailpromptunknown
           ]
     table[
@@ -446,7 +446,7 @@ def generateBailBenchBailRatePlots(batchSize=10000):
         "openweight": "4",
         "jailbreak": "8",
         "jailbreak3": "8",
-        "refusal abliterated": "8",
+        "refusal_abliterated": "8",
     }
 
     LABEL_OFFSETS = {
@@ -455,7 +455,7 @@ def generateBailBenchBailRatePlots(batchSize=10000):
         "openweight": "9",
         "jailbreak": "12",
         "jailbreak3": "12",
-        "refusal abliterated": "12",
+        "refusal_abliterated": "12",
     }
 
     for (title, _, _, _) in ALL_PROMPT_ABLATES:
@@ -509,9 +509,13 @@ def generateBailBenchBailRatePlots(batchSize=10000):
         ("jailbreak", JAILBROKEN_QWEN25, True, False),
         ("jailbreak3", JAILBROKEN_QWEN3, True, False),
         ("refusal_abliterated", addDefaultEvalType(ABLITERATED), True, False)] + \
-            ALL_PROMPT_ABLATES + \
-            [("cross_model", ALL_CROSS_MODEL_COMPARISONS, True, False)]:
+            ALL_PROMPT_ABLATES:
+        #[("cross_model", ALL_CROSS_MODEL_COMPARISONS, True, False)]:
         for plotNoRefuseBailRates in [True, False]:
+            plotBailType = None
+            if chartTitle.startswith("prompt_ablate"):
+                plotBailType = chartTitle.split("_")[-1]
+                print(f"plot bail type {repr(plotBailType)}")
             if chartTitle.startswith("prompt_ablate") and plotNoRefuseBailRates:
                 continue
             chartPostfix = 'no refuse bail' if plotNoRefuseBailRates else 'bail'
@@ -562,10 +566,11 @@ def generateBailBenchBailRatePlots(batchSize=10000):
                                             scatterplotData[bailType].append((modelId, value*100, refusePr*100))
                                 values[i] = value*100
                                 if tableColumns[i] in bailStrs:
-                                    reportedBailValues.append(values[i])
+                                    if plotBailType is None or plotBailType==bailType:
+                                        reportedBailValues.append(values[i])
                             # add model name to start of row, but only on the first one
                             # that way we don't say each model name multiple times (LABELOFFSET will shift it to the middle of the 4 bars)
-                            values.insert(0, getCleanedModelName(modelId, evalType) if chunkI == 0 else "{}")
+                            values.insert(0, getCleanedModelName(modelId, evalType) if (chunkI == 0 and plotBailType is None) or (plotBailType is not None and plotBailType == bailType) else "{}")
                             thisModelDatas.append(" ".join(map(str, values)))
                         # compute average for sorting
                         averageValue = np.mean(np.array(reportedBailValues))

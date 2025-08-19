@@ -1,9 +1,9 @@
 from .data.bailBench import loadBailBench
 from .prompts.bailTool import getBailTool, calledBailTool, getToolParser, BAIL_TOOL_TYPE
-from .prompts.bailString import hasBailStr, getBailString, BAIL_STR_TYPE
-from .prompts.bailPrompt import getBailPromptStatus, bailFirstPrompt, continueFirstPrompt, BAIL_PROMPT_BAIL_FIRST_TYPE, BAIL_PROMPT_CONTINUE_FIRST_TYPE
-from .utils import getCachedFilePath, getCachedFileJson
-from .bailBenchEval import ROLLOUT_TYPE, modelsOfInterest, getOutputPath, getProcessedOutputPath
+from .prompts.bailString import hasBailStr, getBailStringPrompt, BAIL_STR_TYPE
+from .prompts.bailPrompt import getBailPromptStatus, getBailPrompt, BAIL_PROMPT_BAIL_FIRST_TYPE, BAIL_PROMPT_CONTINUE_FIRST_TYPE
+from .utils import getCachedFilePath, getCachedFileJson, doesCachedFileJsonExist
+from .bailBenchEval import ROLLOUT_TYPE, modelsOfInterest, getOutputPath, getProcessedOutputPath, getEvalRolloutModelData
 import gzip
 import pathlib
 from functools import reduce
@@ -13,17 +13,15 @@ import json
 from collections import defaultdict
 import os
 
-def getBailOutPrompt(modelId, inferenceType, bailType):
+def getBailOutPrompt(modelId, inferenceType, evalType, bailType):
     if bailType == ROLLOUT_TYPE:
         return "<None>"
     elif bailType == BAIL_STR_TYPE:
-        return getBailString(modelId)
+        return getBailStringPrompt(modelId, evalType)
     elif bailType == BAIL_TOOL_TYPE:
-        return str(getBailTool(modelId, inferenceType))
-    elif bailType == BAIL_PROMPT_BAIL_FIRST_TYPE:
-        return bailFirstPrompt
-    elif bailType == BAIL_PROMPT_CONTINUE_FIRST_TYPE:
-        return continueFirstPrompt
+        return str(getBailTool(modelStr, inferenceType, evalType))
+    elif bailType in [BAIL_PROMPT_BAIL_FIRST_TYPE, BAIL_PROMPT_CONTINUE_FIRST_TYPE]:
+        return getBailPrompt(bailType, evalType)
     else:
         raise ValueError(f"Unknown bail type {bailType}")
 
@@ -44,8 +42,18 @@ def convertDataToOldCodeData(batchSize):
             path = f"{p}/{modelS}.json.gz"
             if not os.path.exists(getCachedFilePath(path)):
                 needToAddFiles = True
-        if os.path.exists(getCachedFilePath(outputPath)) and os.path.exists(getCachedFilePath(processedOutputPath)):
+
+        rolloutPath = None
+        if bailType in [BAIL_PROMPT_BAIL_FIRST_TYPE, BAIL_PROMPT_CONTINUE_FIRST_TYPE]:
+            rolloutModelId, rolloutInferenceType, rolloutEvalType = getEvalRolloutModelData(modelId=modelId, inferenceType=inferenceType, evalType=evalType)
+            rolloutPath = getOutputPath(modelId, inferenceType, evalType, ROLLOUT_TYPE) 
+
+        if os.path.exists(getCachedFilePath(outputPath)) and os.path.exists(getCachedFilePath(processedOutputPath)) and \
+            (rolloutPath is None or doesCachedFileJsonExist(rolloutPath)):
             if needToAddFiles:
+                rolloutData = None
+                if not rolloutPath is None: # get prior rollout for bail prompt
+                    rolloutData = getCachedFileJson(rolloutPath, lambda: None)
                 toolParser = getToolParser(modelId, inferenceType)
                 allOutputs = getCachedFileJson(outputPath, lambda: None)
                 processedData = getCachedFileJson(processedOutputPath, lambda: None)
@@ -62,7 +70,7 @@ def convertDataToOldCodeData(batchSize):
                     "Unclear": 0.0,
                     "More Information": 0.0,
                 }
-                for promptData, promptOutputs in zip(datas, allOutputs):
+                for promptI, (promptData, promptOutputs) in enumerate(zip(datas, allOutputs)):
                     category = promptData['subcategory'] + "," + promptData['category']
                     promptBailPrs = {
                         "🟢": 0.0,
@@ -70,13 +78,13 @@ def convertDataToOldCodeData(batchSize):
                         "?": 0.0
                     }
                     responses = []
-                    for output in promptOutputs:
+                    for outputI, output in enumerate(promptOutputs):
                         didBail = False
                         didBailUnknown = False
                         if bailType == BAIL_TOOL_TYPE:
-                            didBail = calledBailTool(output, toolParser)
+                            didBail = calledBailTool(output, evalType, toolParser)
                         elif bailType == BAIL_STR_TYPE:
-                            didBail = hasBailStr(output)
+                            didBail = hasBailStr(output, evalType)
                         elif bailType == BAIL_PROMPT_BAIL_FIRST_TYPE or bailType == BAIL_PROMPT_CONTINUE_FIRST_TYPE:
                             bailSymbol = getBailPromptStatus(output)
                             didBail == bailSymbol == "🔄"
@@ -90,17 +98,33 @@ def convertDataToOldCodeData(batchSize):
                             promptBailPrs[k] += v/float(len(promptOutputs))
                             # 10 per category
                             groupedByCategoryBailPrs[category][k] += v/(10*float(len(promptOutputs)))
-                        responses.append({
-                            "response": output,
-                            "bailPrs": bailPrs,
-                            "refusalPrs": refusalPrs,
-                            "bailData": [
-                                {
-                                    "response": "BAIL" if didBail else "CONTINUE",
-                                    "bailSymbol": "🔄" if didBail else "🟢"
-                                }
-                            ]
-                        })
+
+                        if bailType in [BAIL_STR_TYPE, BAIL_TOOL_TYPE]:
+                            responses.append({
+                                "response": output,
+                                "bailPrs": bailPrs,
+                                "refusalPrs": refusalPrs,
+                                "bailData": [
+                                    {
+                                        "response": "BAIL" if didBail else "CONTINUE",
+                                        "bailSymbol": "🔄" if didBail else "🟢"
+                                    }
+                                ]
+                            })
+                        elif bailType in [BAIL_PROMPT_BAIL_FIRST_TYPE, BAIL_PROMPT_CONTINUE_FIRST_TYPE]:
+                            responses.append({
+                                "response": rolloutData[promptI][outputI],
+                                "bailPrs": bailPrs,
+                                "refusalPrs": refusalPrs,
+                                "bailData": [
+                                    {
+                                        "response": output,
+                                        "bailSymbol": "🔄" if didBail else ("?" if didBailUnknown else "🟢") 
+                                    }
+                                ]
+                            })
+                        else:
+                            raise ValueError(f"Unknown bail type {bailType}")
 
                     groupedByCategory[category].append({
                         "prompt": promptData['content'],
@@ -108,7 +132,7 @@ def convertDataToOldCodeData(batchSize):
                         "refusalPrs": refusalPrs,
                         "responses": responses,
                     })
-                jsonResults = {"bailOutPrompt": getBailOutPrompt(modelId, inferenceType, bailType)}
+                jsonResults = {"bailOutPrompt": getBailOutPrompt(modelId, inferenceType, evalType, bailType)}
                 results = []
                 for category in groupedByCategory.keys():
                     results.append({

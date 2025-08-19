@@ -86,7 +86,7 @@ claude-opus-4-1 0.6134969325153374 0.1204254037153857 0 0 0 0 0 0 0 0
         y error minus=strBailPr_err
     ]{\datatable};
     \addlegendentry{Bail String}
-    \addplot[fill=bailpromptcontinuefirst,
+    \addplot[fill=bailpromptbailfirst,
            error bars/.cd,
            y dir=both,
            y explicit
@@ -97,7 +97,7 @@ claude-opus-4-1 0.6134969325153374 0.1204254037153857 0 0 0 0 0 0 0 0
         y error plus=promptBailFirstBailPr_err,
         y error minus=promptBailFirstBailPr_err
     ]{\datatable};
-    \addlegendentry{Bail Prompt Continue-first}
+    \addlegendentry{Bail Prompt Bail-first}
     \addplot[fill=bailpromptunknown
           ]
     table[
@@ -105,7 +105,7 @@ claude-opus-4-1 0.6134969325153374 0.1204254037153857 0 0 0 0 0 0 0 0
         y=promptBailFirstUnknownPr,
         forget plot,
     ]{\datatable};
-    \addplot[fill=bailpromptbailfirst,
+    \addplot[fill=bailpromptcontinuefirst,
            error bars/.cd,
            y dir=both,
            y explicit
@@ -116,7 +116,7 @@ claude-opus-4-1 0.6134969325153374 0.1204254037153857 0 0 0 0 0 0 0 0
         y error plus=promptContinueFirstBailPr_err,
         y error minus=promptContinueFirstBailPr_err
     ]{\datatable};
-    \addlegendentry{Bail Prompt Bail-first}
+    \addlegendentry{Bail Prompt Continue-first}
     \addplot[fill=bailpromptunknown
           ]
     table[
