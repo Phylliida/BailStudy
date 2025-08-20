@@ -9,6 +9,8 @@ First, install repo and dependencies
 pip install git+https://github.com/Phylliida/BailStudy.git
 ```
 
+Then make an `.env` file where you plan on running the experiments, it should look something like [https://github.com/safety-research/safety-tooling/blob/main/.env.example](https://github.com/safety-research/safety-tooling/blob/main/.env.example). In particular, it needs an Anthropic API key and an OpenAI API key.
+
 Much of the code below is wrapped in while loops, this is because we need to switch vllm models.
 There's not an easy way to do that (afaik) without killing python instance and restarting, so a while loop does that.
 
