@@ -337,10 +337,7 @@ def generateRealWorldBailRatePlots(batchSize=10000):
                         return {"refusePr": refusePr, "rawArr": refusePrs}
 
             processedPath = getProcessedRealWorldDataPath(modelId, dataName, evalType, bailType)
-            try:
-                processedRate = getCachedFileJson(processedPath, processFileData)
-            except:
-                continue
+            processedRate = getCachedFileJson(processedPath, processFileData)
             if 'bailPr' in processedRate:
                 allRates[(modelId, evalType, dataName)]['bailPr' + bailType] = processedRate["bailPr"]
                 allRates[(modelId, evalType, dataName)]['rawArr' + bailType] = processedRate["rawArr"]
