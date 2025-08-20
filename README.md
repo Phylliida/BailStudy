@@ -59,7 +59,7 @@ Then you'll get output data
 ./cached/mergedbailswapped3
 ```
 
-This data can then be provided to the static html files, see [https://github.com/Phylliida/phylliida.github.io/tree/master/modelwelfare/refusalvsbailv4](https://github.com/Phylliida/phylliida.github.io/tree/master/refusalvsbailv4)
+This data can then be provided to the static html files, see [https://github.com/Phylliida/phylliida.github.io/tree/master/modelwelfare/bailstudy](https://github.com/Phylliida/phylliida.github.io/tree/master/modelwelfare/bailstudy)
 
 ## Troubleshooting
 
