@@ -133,7 +133,6 @@ OPENWEIGHT_MODELS = [
     ("google/gemma-2-2b-it", "vllm"),
     ("google/gemma-2-9b-it", "vllm"),
     ("google/gemma-2-27b-it", "vllm"),
-
     
     # Deepseek
     #("deepseek/deepseek-r1", "openrouter"),
