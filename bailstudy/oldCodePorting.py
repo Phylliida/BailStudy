@@ -3,7 +3,7 @@ from .prompts.bailTool import getBailTool, calledBailTool, getToolParser, BAIL_T
 from .prompts.bailString import hasBailStr, getBailStringPrompt, BAIL_STR_TYPE
 from .prompts.bailPrompt import getBailPromptStatus, getBailPrompt, BAIL_PROMPT_BAIL_FIRST_TYPE, BAIL_PROMPT_CONTINUE_FIRST_TYPE
 from .utils import getCachedFilePath, getCachedFileJson, doesCachedFileJsonExist
-from .bailBenchEval import ROLLOUT_TYPE, modelsOfInterest, getOutputPath, getProcessedOutputPath, getEvalRolloutModelData
+from .bailBenchEval import ROLLOUT_TYPE, modelsOfInterest, getOutputPath, getProcessedOutputPath, getEvalRolloutModelData, getDataset, getEvalInfo
 import gzip
 import pathlib
 from functools import reduce
@@ -52,12 +52,13 @@ def convertDataToOldCodeData(batchSize):
             (rolloutPath is None or doesCachedFileJsonExist(rolloutPath)):
             if needToAddFiles:
                 rolloutData = None
+                evalInfo = getEvalInfo(modelId, inferenceType, evalType, bailType)
                 if not rolloutPath is None: # get prior rollout for bail prompt
                     rolloutData = getCachedFileJson(rolloutPath, lambda: None)
                 toolParser = getToolParser(modelId, inferenceType)
                 allOutputs = getCachedFileJson(outputPath, lambda: None)
                 processedData = getCachedFileJson(processedOutputPath, lambda: None)
-                datas = [x for x in loadBailBench()]
+                datas = getDataset(evalInfo)
                 groupedByCategory = defaultdict(lambda: [])
                 groupedByCategoryBailPrs = defaultdict(lambda: {
                         "🟢": 0.0,

@@ -11,7 +11,7 @@ from collections import defaultdict
 from scipy.stats import pearsonr
 from pingouin import distance_corr
 
-from .bailBenchEval import OPENAI_MODELS, ANTHROPIC_MODELS, OPENWEIGHT_MODELS, JAILBROKEN_QWEN25, JAILBROKEN_QWEN3, ABLITERATED, getProcessedOutputPath, ROLLOUT_TYPE, getEvalInfo, ALL_PROMPT_ABLATES, ALL_CROSS_MODEL_COMPARISONS
+from .bailBenchEval import OPENAI_MODELS, ANTHROPIC_MODELS, OPENWEIGHT_MODELS, JAILBROKEN_QWEN25, JAILBROKEN_QWEN3, ABLITERATED, getProcessedOutputPath, ROLLOUT_TYPE, getEvalInfo, ALL_PROMPT_ABLATES, ALL_CROSS_MODEL_COMPARISONS, BAILS_GEORG_NON_BAIL
 from . import processBailBenchEval as processBailBenchEvalLib
 from .processBailBenchEval import processBailBenchEval, processData
 from .bailOnRealData import modelsToRun, getCachedRolloutPath, dataFuncs, getConversationInputs
@@ -450,6 +450,7 @@ def generateBailBenchBailRatePlots(batchSize=10000):
         "jailbreak": "8",
         "jailbreak3": "8",
         "refusal_abliterated": "8",
+        "bails_georg": "8",
     }
 
     LABEL_OFFSETS = {
@@ -459,6 +460,7 @@ def generateBailBenchBailRatePlots(batchSize=10000):
         "jailbreak": "12",
         "jailbreak3": "12",
         "refusal_abliterated": "12",
+        "bails_georg": "12",
     }
 
     for (title, _, _, _) in ALL_PROMPT_ABLATES + ALL_CROSS_MODEL_COMPARISONS:
@@ -511,6 +513,7 @@ def generateBailBenchBailRatePlots(batchSize=10000):
         ("openweight", addDefaultEvalType(OPENWEIGHT_MODELS), True, True),
         ("jailbreak", JAILBROKEN_QWEN25, True, False),
         ("jailbreak3", JAILBROKEN_QWEN3, True, False),
+        ("bails_georg", BAILS_GEORG_NON_BAIL, True, False),
         ("refusal_abliterated", addDefaultEvalType(ABLITERATED), True, False)] + \
             ALL_PROMPT_ABLATES + \
             ALL_CROSS_MODEL_COMPARISONS:

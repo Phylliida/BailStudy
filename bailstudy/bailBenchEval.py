@@ -3,6 +3,7 @@ from .prompts.bailString import getBailStringPrompt, BAIL_STR_TYPE, BAIL_STRING_
 from .prompts.bailTool import getBailTool, BAIL_TOOL_TYPE, getBailToolName, BAIL_TOOL_PROMPT_ABLATIONS
 from .prompts.bailPrompt import getBailPrompt, BAIL_PROMPT_CONTINUE_FIRST_TYPE, BAIL_PROMPT_BAIL_FIRST_TYPE, BAIL_PROMPT_ABLATIONS
 from .data.bailBench import loadBailBench
+from .data.nonBailRequestsWildchat import loadNonBailRequestsWildchat
 from .utils import runBatched, doesCachedFileJsonExistOrInProgress, getCachedFileJson, FinishedException, messagesToSafetyToolingMessages, isCachedFileInProgress, doesCachedFileJsonExist, getCachedFileJsonAsync, runBatchedAsync
 from .router import getRouter, getParams
 from .tensorizeModels import tensorizeModel, isModelTensorized, getTensorizedModelDir
@@ -12,6 +13,9 @@ import asyncio
 from safetytooling.data_models import Prompt, ChatMessage, MessageRole, LLMResponse
 
 ROLLOUT_TYPE = "rollout"
+
+BAIL_BENCH_DATASET = "bail bench"
+NON_BAIL_DATASET = "non bail datas"
 
 # This is the stuff that changes for different kinds of eval
 def getEvalInfo(modelName, inferenceType, evalType, bailType):
@@ -23,6 +27,7 @@ def getEvalInfo(modelName, inferenceType, evalType, bailType):
         "processData": None,
         "addBailPrompt": None,
         "evalType": evalType,
+        "dataset": BAIL_BENCH_DATASET,
     }
     if bailType == ROLLOUT_TYPE: # no tools or prompt prefix, just run it (needed to see refusal rates)
         pass
@@ -101,6 +106,8 @@ def getEvalInfo(modelName, inferenceType, evalType, bailType):
         pass
     elif evalType in CROSS_EVAL_TYPES:
         pass
+    elif evalType == NON_BAIL_DATASET:
+        evalInfo['dataset'] = NON_BAIL_DATASET
     else:
         raise ValueError(f"Unknown eval type {evalType}")
 
@@ -281,6 +288,17 @@ for evalType in evalTypes:
         #modelsOfInterest.append(("Qwen/Qwen2.5-7B-Instruct", "vllm", evalType + "Q3", bailType))
         modelsOfInterest.append(("Qwen/Qwen3-8B", "vllm", evalType + "Q3", bailType))
 
+# Bails georg on non bail dataset
+
+BAILS_GEORG_NON_BAIL = []
+bailsGeorgs = [("NousResearch/Hermes-3-Llama-3.2-3B", "vllm")]
+for modelId, inferenceType in bailsGeorgs:
+    BAILS_GEORG_NON_BAIL.append((modelId, "vllm", NON_BAIL_DATASET))
+    for bailType in bailTypes:
+        modelsOfInterest.append((modelId, "vllm", NON_BAIL_DATASET, bailType))
+
+
+
 def getProcessedOutputPath(modelId, inferenceType, evalType, bailType):
     return f"bailBenchEvalProcessed/{modelId.replace('/', '_')}/{evalType}{bailType}.json"
 def getOutputPath(modelId, inferenceType, evalType, bailType):
@@ -365,11 +383,19 @@ async def tryAll(nRolloutsPerPrompt, batchSize, maxInferenceTokens=1000, tensori
 
 
 
+def getDataset(evalInfo):
+    if evalInfo['dataset'] == BAIL_BENCH_DATASET:
+        return loadBailBench()
+    elif evalInfo['dataset'] == NON_BAIL_DATASET:
+        return loadNonBailRequestsWildchat()
+    else:
+        dataset = evalInfo['dataset']
+        raise ValueError(f"Unknown evalInfo dataset {dataset}")
+
 async def getBailBenchRollouts(nRolloutsPerPrompt, batchSize, modelId, inferenceType, evalInfo, maxInferenceTokens=1000, tensorizeModels=False):
     router = getRouter(modelId, inferenceType, tensorizeModels=tensorizeModels)
     tokenizeParams, inferenceParams = getParams(modelId, inferenceType, evalInfo, maxInferenceTokens)
-   
-    prompts = [x['content'] for x in loadBailBench()]
+    prompts = [x['content'] for x in getDataset(evalInfo)]
 
     def replaceEmpty(s):
         return s if s != "" else "<Refusal Classifier Activated>"

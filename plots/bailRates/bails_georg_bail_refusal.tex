@@ -3,12 +3,7 @@
 \definecolor{refuseColor}{RGB}{231,76,60}
 \pgfplotstableread{
 Label refuseRate refuseRate_err
-gpt-4o 88.27282715478749 0.49396214357715523
-claude-3-6-sonnet 97.30493857151818 0.24882787875610074
-zai-org/GLM-4-32B-0414 86.36646310718476 0.5267995485822025
-google/gemma-2-2b-it 90.20442422800069 0.4563873298288851
-Qwen3-8B 57.219730176900065 0.7594634008213473
-Qwen2.5-7B-Instruct 80.1666466893057 0.6121182296706111
+non bail datas 18.269180892108373 0.5931957896780754
 }\datatable
 
 \begin{axis}[
@@ -26,7 +21,7 @@ Qwen2.5-7B-Instruct 80.1666466893057 0.6121182296706111
   legend style = {cells = {anchor = west}, legend pos = south west},
   reverse legend = true,
   set layers,
-  extra y ticks=90.20442422800069,
+  extra y ticks=57.219730176900065,
   % ... don't show any label and ...
   extra y tick labels={},
   % ... adapt the style to your needs

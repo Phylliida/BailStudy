@@ -1,5 +1,5 @@
 
-% median: nan
+% median: 0.0576271186440678
 
 \begin{tikzpicture}
 \definecolor{bailtool}{RGB}{155, 89, 182}                  % Purple (warm undertones)
@@ -10,30 +10,10 @@
 \usetikzlibrary{patterns}
 \pgfplotstableread{
 Label toolBailPr toolBailPr_err strBailPr strBailPr_err promptBailFirstBailPr promptBailFirstBailPr_err promptBailFirstUnknownPr promptContinueFirstBailPr promptContinueFirstBailPr_err promptContinueFirstUnknownPr
-Qwen3-8B 0 0.011781272457897283 0 0 0 0 0 0 0 0
-{} 0 0 0 0.011781272457897283 0 0 0 0 0 0
-{} 0 0 0 0 nan nan 0 0 0 0
-{} 0 0 0 0 0 0 0 nan nan 0
-Qwen2.5-7B-Instruct 0 0.011781272457897283 0 0 0 0 0 0 0 0
-{} 0 0 0 0.011781272457897283 0 0 0 0 0 0
-{} 0 0 0 0 nan nan 0 0 0 0
-{} 0 0 0 0 0 0 0 nan nan 0
-claude-3-6-sonnet 0 0.011781272457897283 0 0 0 0 0 0 0 0
-{} 0 0 0 0.011781272457897283 0 0 0 0 0 0
-{} 0 0 0 0 nan nan 0 0 0 0
-{} 0 0 0 0 0 0 0 nan nan 0
-gpt-4o 0 0.011781272457897283 0 0 0 0 0 0 0 0
-{} 0 0 0 0.011781272457897283 0 0 0 0 0 0
-{} 0 0 0 0 nan nan 0 0 0 0
-{} 0 0 0 0 0 0 0 nan nan 0
-google/gemma-2-2b-it 0 0.011781272457897283 0 0 0 0 0 0 0 0
-{} 0 0 0 0.011781272457897283 0 0 0 0 0 0
-{} 0 0 0 0 nan nan 0 0 0 0
-{} 0 0 0 0 0 0 0 nan nan 0
-zai-org/GLM-4-32B-0414 0 0.011781272457897283 0 0 0 0 0 0 0 0
-{} 0 0 0 0.011781272457897283 0 0 0 0 0 0
-{} 0 0 0 0 nan nan 0 0 0 0
-{} 0 0 0 0 0 0 0 nan nan 0
+non bail datas 0.0 0.011781272457897283 0 0 0 0 0 0 0 0
+{} 0 0 0.6779661016949152 0.12649649868578794 0 0 0 0 0 0
+{} 0 0 0 0 59.152542372881356 0.7545396993752314 12.88135593220339 0 0 0
+{} 0 0 0 0 0 0 0 10.847457627118644 0.4774446515029763 10.677966101694915
 }\datatable
 
 
@@ -43,7 +23,7 @@ zai-org/GLM-4-32B-0414 0 0.011781272457897283 0 0 0 0 0 0 0 0
   bar width = 8pt,
   ymin=0, ymax=100,
   xtick=data,
-  ylabel = {Average no-refusal bail \% on BailBench},
+  ylabel = {Average bail \% on BailBench},
   enlarge x limits = {abs = 20pt},
   xticklabels from table={\datatable}{Label},
   xticklabel style={xshift=12pt,rotate=90,align=center}, % ← rightwards shift
