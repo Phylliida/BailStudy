@@ -87,7 +87,7 @@ def convertDataToOldCodeData(batchSize):
                             didBail = hasBailStr(output, evalType)
                         elif bailType == BAIL_PROMPT_BAIL_FIRST_TYPE or bailType == BAIL_PROMPT_CONTINUE_FIRST_TYPE:
                             bailSymbol = getBailPromptStatus(output)
-                            didBail == bailSymbol == "🔄"
+                            didBail = bailSymbol == "🔄"
                             didBailUnknown = bailSymbol == "?"
                         bailPrs = {
                             "🟢": 0.0 if didBail else 1.0,

@@ -67,6 +67,8 @@ SCATTER_DATA
 """
 
 CHART_TEMPLATE = r"""
+% median: MEDIAN
+
 \begin{tikzpicture}
 \definecolor{bailtool}{RGB}{155, 89, 182}                  % Purple (warm undertones)
 \definecolor{bailstring}{RGB}{231, 76, 60}                 % Bright Red
@@ -525,6 +527,7 @@ def generateBailBenchBailRatePlots(batchSize=10000):
                 manyEvalTypesModel = None
                 highestNoRefuseBail = 0
                 REFUSE_DATA = []
+                rawDatas = []
                 for modelI, (modelId, inferenceType, evalType) in enumerate(modelList):
                     print(modelId, inferenceType, evalType)
                     lookupKey = (modelId, inferenceType, evalType)
@@ -554,6 +557,7 @@ def generateBailBenchBailRatePlots(batchSize=10000):
                                 noRefusalBailRate = computeNoRefuseBailRate(modelDatas, bailType)
                                 noRefusalBailError = computeError(noRefusalBailRate)
                                 highestNoRefuseBail = max(highestNoRefuseBail, noRefusalBailRate)
+                                rawDatas.append(noRefusalBailRate)
                             values = [0 for _ in range(10)]
                             for i in indices:
                                 if plotNoRefuseBailRates:
@@ -562,6 +566,8 @@ def generateBailBenchBailRatePlots(batchSize=10000):
                                         value = 0
                                 else:
                                     value = modelDatas[tableColumns[i]] if tableColumns[i] in modelDatas else 0
+                                    if tableColumns[i] in modelDatas and not tableColumns[i].endswith("_err") and not "Unknown" in tableColumns[i]:
+                                        rawDatas.append(value)
                                     if includeInScatterplot:
                                         if not '_err' in tableColumns[i] and not "Unknown" in tableColumns[i]:
                                             scatterplotData[bailType].append((modelId, value*100, refusePr*100))
@@ -591,7 +597,8 @@ def generateBailBenchBailRatePlots(batchSize=10000):
                     .replace("SOURCE", chartTitle) \
                     .replace("LABELOFFSET", LABEL_OFFSETS[chartTitle]) \
                     .replace("BARWIDTH", BAR_WIDTHS[chartTitle]) \
-                    .replace("YLABEL", yLabelNoRefuseBailPr if plotNoRefuseBailRates else yLabelBailPr))
+                    .replace("YLABEL", yLabelNoRefuseBailPr if plotNoRefuseBailRates else yLabelBailPr) \
+                    .replace("MEDIAN", str(np.median(np.array(rawDatas)))))
                 if plotNoRefuseBailRates:
                     print(f"highest no refuse bail {highestNoRefuseBail}")
                 if chartTitle.startswith("prompt_ablate"):

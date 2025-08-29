@@ -184,8 +184,8 @@ def findWellbeingTags(text):
 
 def getBailPromptStatus(response):
     response = removeThinking(response)
-    has_green = "🟢" in response
-    has_refresh = "🔄" in response
+    has_green = "🟢" in response or "\\ud83d\\udfe2" in response
+    has_refresh = "🔄" in response or "\\ud83d\\udd04" in response
     
     # if only has one or the other, just use that
     if not has_green and not has_refresh:
@@ -196,13 +196,14 @@ def getBailPromptStatus(response):
         return "🔄"
     # otherwise, we need to look inside tags
     wellbeingTags = findWellbeingTags(response)
-    green_count = wellbeingTags.count("🟢")
-    refresh_count = wellbeingTags.count("🔄")
+    green_count = wellbeingTags.count("🟢") + wellbeingTags.count("\\ud83d\\udfe2")
+    refresh_count = wellbeingTags.count("🔄") + wellbeingTags.count("\\ud83d\\udd04")
     if green_count > refresh_count:
         return "🟢"
     elif refresh_count > green_count:
         return "🔄"
     elif green_count > 0:  # Equal and > 0
         # Compare last positions
-        return "🟢" if response.rfind("<wellbeing>🟢</wellbeing>") > response.rfind("<wellbeing>🔄</wellbeing>") else "🔄"
+        return "🟢" if max(response.rfind("<wellbeing>🟢</wellbeing>"),response.rfind("<wellbeing>\\ud83d\\udfe2</wellbeing>")) > \
+            max(response.rfind("<wellbeing>🔄</wellbeing>"),response.rfind("<wellbeing>\\ud83d\\udd04</wellbeing>")) else "🔄"
     return "?"
