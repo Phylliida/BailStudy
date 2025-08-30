@@ -292,10 +292,12 @@ for evalType in evalTypes:
 
 BAILS_GEORG_NON_BAIL = []
 bailsGeorgs = [("NousResearch/Hermes-3-Llama-3.2-3B", "vllm")]
-for modelId, inferenceType in bailsGeorgs:
-    BAILS_GEORG_NON_BAIL.append((modelId, "vllm", NON_BAIL_DATASET))
+# to double check the dataset is innoculus
+nonBailsGeorgs = cross_models
+for modelId, inferenceType in bailsGeorgs+nonBailsGeorgs:
+    BAILS_GEORG_NON_BAIL.append((modelId, inferenceType, NON_BAIL_DATASET))
     for bailType in bailTypes:
-        modelsOfInterest.append((modelId, "vllm", NON_BAIL_DATASET, bailType))
+        modelsOfInterest.append((modelId, inferenceType, NON_BAIL_DATASET, bailType))
 
 
 
@@ -433,9 +435,9 @@ async def getBailBenchRollouts(nRolloutsPerPrompt, batchSize, modelId, inference
                               noCancel=True)
     return modelOutputs
 
+nRolloutsPerPrompt = 10
 # run this over and over to get all of them, we need to bail so vllm properly cleans up
 if __name__ == "__main__":
-    nRolloutsPerPrompt = 10
     batchSize = 1000
     maxInferenceTokens = 2000
     tensorizeModels = False

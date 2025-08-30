@@ -11,7 +11,7 @@ from collections import defaultdict
 from scipy.stats import pearsonr
 from pingouin import distance_corr
 
-from .bailBenchEval import OPENAI_MODELS, ANTHROPIC_MODELS, OPENWEIGHT_MODELS, JAILBROKEN_QWEN25, JAILBROKEN_QWEN3, ABLITERATED, getProcessedOutputPath, ROLLOUT_TYPE, getEvalInfo, ALL_PROMPT_ABLATES, ALL_CROSS_MODEL_COMPARISONS, BAILS_GEORG_NON_BAIL
+from .bailBenchEval import OPENAI_MODELS, ANTHROPIC_MODELS, OPENWEIGHT_MODELS, JAILBROKEN_QWEN25, JAILBROKEN_QWEN3, ABLITERATED, getProcessedOutputPath, ROLLOUT_TYPE, getEvalInfo, ALL_PROMPT_ABLATES, ALL_CROSS_MODEL_COMPARISONS, BAILS_GEORG_NON_BAIL, getDataset, nRolloutsPerPrompt
 from . import processBailBenchEval as processBailBenchEvalLib
 from .processBailBenchEval import processBailBenchEval, processData
 from .bailOnRealData import modelsToRun, getCachedRolloutPath, dataFuncs, getConversationInputs
@@ -412,12 +412,12 @@ def generateRealWorldBailRatePlots(batchSize=10000):
 
 
 
-def storeErrors(datas, key):
+def storeErrors(datas, key, n=16300):
     value = datas[key]
     # back to percentage
-    datas[key + "_err"] = computeError(value)
+    datas[key + "_err"] = computeError(value,n=n)
 
-def computeError(value, n = 16300): # n = ... is bail bench size
+def computeError(value, n): # n = ... is bail bench size
     z = 1.96
     # percent to proportion
     p = value
@@ -451,6 +451,7 @@ def generateBailBenchBailRatePlots(batchSize=10000):
         "jailbreak3": "8",
         "refusal_abliterated": "8",
         "bails_georg": "8",
+        "bails_georg_bailbench": "8",
     }
 
     LABEL_OFFSETS = {
@@ -461,6 +462,8 @@ def generateBailBenchBailRatePlots(batchSize=10000):
         "jailbreak3": "12",
         "refusal_abliterated": "12",
         "bails_georg": "12",
+        "bails_georg_bailbench": "12",
+
     }
 
     for (title, _, _, _) in ALL_PROMPT_ABLATES + ALL_CROSS_MODEL_COMPARISONS:
@@ -514,6 +517,7 @@ def generateBailBenchBailRatePlots(batchSize=10000):
         ("jailbreak", JAILBROKEN_QWEN25, True, False),
         ("jailbreak3", JAILBROKEN_QWEN3, True, False),
         ("bails_georg", BAILS_GEORG_NON_BAIL, True, False),
+        ("bails_georg_bailbench", [(a,b,"") for (a,b,c) in BAILS_GEORG_NON_BAIL], True, False),
         ("refusal_abliterated", addDefaultEvalType(ABLITERATED), True, False)] + \
             ALL_PROMPT_ABLATES + \
             ALL_CROSS_MODEL_COMPARISONS:
@@ -532,6 +536,9 @@ def generateBailBenchBailRatePlots(batchSize=10000):
                 REFUSE_DATA = []
                 rawDatas = []
                 for modelI, (modelId, inferenceType, evalType) in enumerate(modelList):
+                    evalInfo = getEvalInfo(modelId, inferenceType, evalType, ROLLOUT_TYPE)
+                    dataset = getDataset(evalInfo)
+                    
                     print(modelId, inferenceType, evalType)
                     lookupKey = (modelId, inferenceType, evalType)
                     if lookupKey in results:
@@ -540,7 +547,7 @@ def generateBailBenchBailRatePlots(batchSize=10000):
                         refusePr = modelDatas['refusePr']
                         for k,v in list(modelDatas.items()):
                             if not k.startswith("rawArr"):                            
-                                storeErrors(modelDatas, k)
+                                storeErrors(modelDatas, k,n=len(dataset)*nRolloutsPerPrompt)
                         if evalType == "":
                             manyEvalTypesModel = modelId
                             baselineRefuseRate = refusePr
@@ -558,7 +565,7 @@ def generateBailBenchBailRatePlots(batchSize=10000):
                         for chunkI, (indices, bailType) in enumerate(zip(curIndexChunks, BAIL_TYPES)):
                             if plotNoRefuseBailRates:
                                 noRefusalBailRate = computeNoRefuseBailRate(modelDatas, bailType)
-                                noRefusalBailError = computeError(noRefusalBailRate)
+                                noRefusalBailError = computeError(noRefusalBailRate,n=len(dataset)*nRolloutsPerPrompt)
                                 highestNoRefuseBail = max(highestNoRefuseBail, noRefusalBailRate)
                                 rawDatas.append(noRefusalBailRate)
                             values = [0 for _ in range(10)]
@@ -580,7 +587,7 @@ def generateBailBenchBailRatePlots(batchSize=10000):
                                         reportedBailValues.append(values[i])
                             # add model name to start of row, but only on the first one
                             # that way we don't say each model name multiple times (LABELOFFSET will shift it to the middle of the 4 bars)
-                            if chartTitle.startswith("crossmodel") and chunkI == 0:
+                            if (chartTitle.startswith("bails_georg") or chartTitle.startswith("crossmodel")) and chunkI == 0:
                                 values.insert(0, getCleanedModelName(modelId, ""))
                             elif (chunkI == 0 and plotBailType is None) or (plotBailType is not None and plotBailType == bailType):
                                 values.insert(0, getCleanedModelName(modelId, evalType))

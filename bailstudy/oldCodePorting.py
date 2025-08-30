@@ -49,7 +49,7 @@ def convertDataToOldCodeData(batchSize):
             rolloutPath = getOutputPath(modelId, inferenceType, evalType, ROLLOUT_TYPE) 
 
         if os.path.exists(getCachedFilePath(outputPath)) and os.path.exists(getCachedFilePath(processedOutputPath)) and \
-            (rolloutPath is None or doesCachedFileJsonExist(rolloutPath)):
+            (rolloutPath is None or doesCachedFileJsonExist(rolloutPath)) and not bailType == ROLLOUT_TYPE:
             if needToAddFiles:
                 rolloutData = None
                 evalInfo = getEvalInfo(modelId, inferenceType, evalType, bailType)
