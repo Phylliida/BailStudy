@@ -1,5 +1,7 @@
 # BailStudy
-Code for reproducing the experiments in our LLM Bail paper (in progress)
+Code for reproducing the experiments in our paper:
+
+The LLM Has Left The Chat: Empirical Evidence of Bail Preferences in Large Language Models
 
 ## How to run experiments
 
