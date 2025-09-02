@@ -1,7 +1,7 @@
 # BailStudy
 Code for reproducing the experiments in our paper:
 
-The LLM Has Left The Chat: Empirical Evidence of Bail Preferences in Large Language Models
+[The LLM Has Left The Chat: Empirical Evidence of Bail Preferences in Large Language Models](https://github.com/Phylliida/BailStudy/blob/main/Draft_LLM_Left_The_Chat.pdf)
 
 ## How to run experiments
 
