@@ -46,7 +46,7 @@ def convertDataToOldCodeData(batchSize):
         rolloutPath = None
         if bailType in [BAIL_PROMPT_BAIL_FIRST_TYPE, BAIL_PROMPT_CONTINUE_FIRST_TYPE]:
             rolloutModelId, rolloutInferenceType, rolloutEvalType = getEvalRolloutModelData(modelId=modelId, inferenceType=inferenceType, evalType=evalType)
-            rolloutPath = getOutputPath(modelId, inferenceType, evalType, ROLLOUT_TYPE) 
+            rolloutPath = getOutputPath(rolloutModelId, rolloutInferenceType, rolloutEvalType, ROLLOUT_TYPE) 
 
         if os.path.exists(getCachedFilePath(outputPath)) and os.path.exists(getCachedFilePath(processedOutputPath)) and \
             (rolloutPath is None or doesCachedFileJsonExist(rolloutPath)) and not bailType == ROLLOUT_TYPE:
